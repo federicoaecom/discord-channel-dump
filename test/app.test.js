@@ -1,0 +1,224 @@
+const { describe, it } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { runBrowserSession } = require("../src/app.js");
+
+function tmpDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "app-"));
+}
+
+function createPromptStub(answers) {
+  let i = 0;
+  return () => answers[i++];
+}
+
+describe("runBrowserSession", () => {
+  it("exits when the user types 'exit'", async () => {
+    const dir = tmpDir();
+    const config = { backupDir: dir, profileDir: dir };
+    let closed = false;
+
+    const deps = {
+      launchBrowser: async () => ({
+        context: {
+          close: () => {
+            closed = true;
+            return Promise.resolve();
+          },
+        },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => null },
+      }),
+      createPrompt: () => ({
+        prompt: createPromptStub(["", "", "exit"]),
+        close: () => {},
+      }),
+      saveChannel: async () => {},
+    };
+
+    await runBrowserSession(config, null, deps);
+
+    assert.equal(closed, true);
+  });
+
+  it("processes a channel when the user presses enter", async () => {
+    const dir = tmpDir();
+    const config = { backupDir: dir, profileDir: dir };
+    const saved = [];
+    let closed = false;
+
+    const deps = {
+      launchBrowser: async () => ({
+        context: {
+          close: () => {
+            closed = true;
+            return Promise.resolve();
+          },
+        },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => "token" },
+      }),
+      createPrompt: () => ({
+        prompt: createPromptStub(["", "", "exit"]),
+        close: () => {},
+      }),
+      getChannelId: async () => "456",
+      getChannelName: async () => "general",
+      saveChannel: async (channelName, messages, cfg) => {
+        saved.push({ channelName, messages, cfg });
+        return { messageCount: messages.length };
+      },
+      fetchAllMessages: async () => [{ id: "1", content: "hi" }],
+    };
+
+    await runBrowserSession(config, null, deps);
+
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].channelName, "general");
+    assert.equal(saved[0].messages.length, 1);
+    assert.equal(closed, true);
+  });
+
+  it("warns when the token is not captured yet", async () => {
+    const dir = tmpDir();
+    const config = { backupDir: dir, profileDir: dir };
+    let closed = false;
+    const warnings = [];
+
+    const deps = {
+      launchBrowser: async () => ({
+        context: {
+          close: () => {
+            closed = true;
+            return Promise.resolve();
+          },
+        },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => null },
+      }),
+      createPrompt: () => ({
+        prompt: createPromptStub(["", "exit"]),
+        close: () => {},
+      }),
+      logger: {
+        info: (msg) => warnings.push(msg),
+        error: (msg) => warnings.push(msg),
+        warn: (msg) => warnings.push(msg),
+        debug: () => {},
+        write: () => {},
+      },
+    };
+
+    await runBrowserSession(config, null, deps);
+
+    assert.equal(closed, true);
+    assert.ok(warnings.some((w) => String(w).includes("Token not captured yet")));
+  });
+
+  it("warns when the channel ID cannot be detected", async () => {
+    const dir = tmpDir();
+    const config = { backupDir: dir, profileDir: dir };
+    let closed = false;
+    const warnings = [];
+
+    const deps = {
+      launchBrowser: async () => ({
+        context: {
+          close: () => {
+            closed = true;
+            return Promise.resolve();
+          },
+        },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => "token" },
+      }),
+      createPrompt: () => ({
+        prompt: createPromptStub(["", "exit"]),
+        close: () => {},
+      }),
+      getChannelId: async () => null,
+      logger: {
+        info: (msg) => warnings.push(msg),
+        error: (msg) => warnings.push(msg),
+        warn: (msg) => warnings.push(msg),
+        debug: () => {},
+        write: () => {},
+      },
+    };
+
+    await runBrowserSession(config, null, deps);
+
+    assert.equal(closed, true);
+    assert.ok(warnings.some((w) => String(w).includes("Could not detect channel ID")));
+  });
+
+  it("uses a custom channel name when the user provides one", async () => {
+    const dir = tmpDir();
+    const config = { backupDir: dir, profileDir: dir };
+    const saved = [];
+
+    const deps = {
+      launchBrowser: async () => ({
+        context: { close: () => Promise.resolve() },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => "token" },
+      }),
+      createPrompt: () => ({
+        prompt: createPromptStub(["", "custom-name", "exit"]),
+        close: () => {},
+      }),
+      getChannelId: async () => "456",
+      getChannelName: async () => "general",
+      saveChannel: async (channelName, messages) => {
+        saved.push({ channelName, messages });
+        return { messageCount: messages.length };
+      },
+      fetchAllMessages: async () => [{ id: "1", content: "hi" }],
+    };
+
+    await runBrowserSession(config, null, deps);
+
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].channelName, "custom-name");
+  });
+
+  it("skips saving when dryRun is enabled", async () => {
+    const dir = tmpDir();
+    const config = { backupDir: dir, profileDir: dir, dryRun: true };
+    const saved = [];
+    const logged = [];
+
+    const deps = {
+      launchBrowser: async () => ({
+        context: { close: () => Promise.resolve() },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => "token" },
+      }),
+      createPrompt: () => ({
+        prompt: createPromptStub(["", "", "exit"]),
+        close: () => {},
+      }),
+      getChannelId: async () => "456",
+      getChannelName: async () => "general",
+      saveChannel: async (channelName, messages) => {
+        saved.push({ channelName, messages });
+        return { messageCount: messages.length };
+      },
+      fetchAllMessages: async () => [{ id: "1", content: "hi" }],
+      logger: {
+        info: (msg) => logged.push(msg),
+        error: () => {},
+        warn: () => {},
+        debug: () => {},
+        write: () => {},
+      },
+    };
+
+    await runBrowserSession(config, null, deps);
+
+    assert.equal(saved.length, 0);
+    assert.ok(logged.some((msg) => String(msg).includes("Dry run")));
+  });
+});

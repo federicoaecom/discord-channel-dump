@@ -1,0 +1,9 @@
+test/
+openspec/
+backups/
+browser-profile/
+.github/
+.codegraph/
+.atl/
+*.log
+*_output.txt

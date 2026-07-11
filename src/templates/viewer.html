@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; frame-src 'none';">
+<title>Backup — #{{CHANNEL_NAME}}</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#1e1f22;color:#dbdee1;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5}
+header{background:#2b2d31;padding:10px 24px;border-bottom:1px solid #3f4147;position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;color:#fff;white-space:nowrap}
+.header-meta{color:#949ba4;font-size:12px;white-space:nowrap}
+.search-wrap{position:relative;min-width:180px;flex:1;max-width:300px}
+.search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none}
+#search{width:100%;background:#1e1f22;border:1px solid #3f4147;border-radius:6px;padding:6px 8px 6px 30px;color:#dbdee1;font-size:13px;outline:none;transition:border-color .15s}
+#search::placeholder{color:#6d6f78}
+#search:focus{border-color:#5865f2;background:#16171a}
+.date-wrap{display:flex;align-items:center;gap:6px}
+.date-wrap label{font-size:12px;color:#949ba4;white-space:nowrap}
+.date-wrap input[type=date]{background:#1e1f22;border:1px solid #3f4147;border-radius:6px;padding:5px 8px;color:#dbdee1;font-size:12px;outline:none;cursor:pointer;transition:border-color .15s;color-scheme:dark}
+.date-wrap input[type=date]:focus{border-color:#5865f2}
+#clear-btn{background:none;border:1px solid #3f4147;border-radius:6px;padding:5px 10px;color:#949ba4;font-size:12px;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap}
+#clear-btn:hover{border-color:#5865f2;color:#c9cdfb}
+#search-count{font-size:12px;color:#949ba4;white-space:nowrap;min-width:70px}
+.container{max-width:920px;margin:0 auto;padding:12px 16px}
+.msg{padding:8px 12px;border-radius:6px;margin-bottom:2px;border-left:3px solid transparent;transition:background .12s,border-color .12s}
+.msg:hover{background:#2e3035;border-left-color:#5865f2}
+.msg.hidden{display:none}
+.msg.matched{border-left-color:#faa61a}
+.meta{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.author{font-weight:600;color:#c9cdfb;font-size:13px}.author.sys{color:#6d6f78}
+.date{font-size:11px;color:#6d6f78}
+.text{color:#dbdee1;word-break:break-word}
+mark{background:rgba(250,166,26,.25);color:#fde68a;border-radius:2px;padding:0 1px}
+.imgs{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.thumb{max-width:300px;max-height:220px;border-radius:4px;object-fit:cover;cursor:pointer;border:1px solid #3f4147;transition:opacity .15s}
+.thumb:hover{opacity:.82}
+.atts{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px}
+.att{display:inline-flex;align-items:center;gap:4px;background:#2b2d31;border:1px solid #3f4147;border-radius:4px;padding:4px 10px;color:#00aff4;font-size:13px;text-decoration:none;transition:background .12s}
+.att:hover{background:#383a40;text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <h1>#{{CHANNEL_NAME}}</h1>
+  <span class="header-meta">{{MESSAGE_COUNT}} msgs &mdash; {{GENERATED_AT}}</span>
+
+  <div class="search-wrap">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dbdee1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input id="search" type="search" placeholder="Buscar en el chat…" autocomplete="off" spellcheck="false">
+  </div>
+
+  <div class="date-wrap">
+    <label for="date-from">Desde</label>
+    <input id="date-from" type="date" min="{{MIN_DATE}}" max="{{MAX_DATE}}">
+    <label for="date-to">Hasta</label>
+    <input id="date-to"   type="date" min="{{MIN_DATE}}" max="{{MAX_DATE}}">
+  </div>
+
+  <button id="clear-btn">✕ Limpiar</button>
+  <span id="search-count"></span>
+</header>
+<div class="container">
+{{ROWS}}
+</div>
+<script>
+(function () {
+  var search   = document.getElementById('search');
+  var dateFrom = document.getElementById('date-from');
+  var dateTo   = document.getElementById('date-to');
+  var clearBtn = document.getElementById('clear-btn');
+  var counter  = document.getElementById('search-count');
+  var msgs     = Array.from(document.querySelectorAll('.msg'));
+  var total    = msgs.length;
+  var originals = msgs.map(function(m) { return m.innerHTML; });
+
+  function escRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function getMatches(text, re) {
+    var matches = [];
+    var localRe = new RegExp(re.source, re.flags);
+    var m;
+    while ((m = localRe.exec(text)) !== null) {
+      matches.push(m);
+      if (m[0].length === 0) localRe.lastIndex++;
+    }
+    return matches;
+  }
+
+  function highlightNode(node, re) {
+    var walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null, false);
+    var textNodes = [];
+    var n;
+    while ((n = walker.nextNode())) textNodes.push(n);
+
+    for (var i = textNodes.length - 1; i >= 0; i--) {
+      var tn = textNodes[i];
+      var text = tn.nodeValue;
+      var matches = getMatches(text, re);
+      if (!matches.length) continue;
+
+      var frag = document.createDocumentFragment();
+      var lastIndex = 0;
+      for (var j = 0; j < matches.length; j++) {
+        var match = matches[j];
+        var start = match.index;
+        if (start > lastIndex) {
+          frag.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+        }
+        var mark = document.createElement('mark');
+        mark.textContent = match[0];
+        frag.appendChild(mark);
+        lastIndex = start + match[0].length;
+      }
+      if (lastIndex < text.length) {
+        frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+      }
+      tn.parentNode.replaceChild(frag, tn);
+    }
+  }
+
+  function dayMs(val, endOfDay) {
+    if (!val) return null;
+    var p = val.split('-');
+    var ms = new Date(+p[0], +p[1]-1, +p[2]).getTime();
+    return endOfDay ? ms + 86399999 : ms;
+  }
+
+  function filter() {
+    var q      = search.value.trim().toLowerCase();
+    var fromMs = dayMs(dateFrom.value, false);
+    var toMs   = dayMs(dateTo.value, true);
+    var hasFilter = q || fromMs !== null || toMs !== null;
+    var re = q ? new RegExp(escRe(q), 'gi') : null;
+    var visible = 0;
+
+    msgs.forEach(function(m, i) {
+      var textOk = !q || (m.dataset.search || '').indexOf(q) !== -1;
+      var ts     = +m.dataset.ts || 0;
+      var fromOk = fromMs === null || ts >= fromMs;
+      var toOk   = toMs   === null || ts <= toMs;
+
+      if (textOk && fromOk && toOk) {
+        m.classList.remove('hidden');
+        m.innerHTML = originals[i];
+        if (re) { m.classList.add('matched'); highlightNode(m, re); }
+        else    { m.classList.remove('matched'); }
+        visible++;
+      } else {
+        m.classList.add('hidden');
+        m.classList.remove('matched');
+      }
+    });
+
+    counter.textContent = hasFilter ? (visible + ' / ' + total) : '';
+  }
+
+  search.addEventListener('input', filter);
+  dateFrom.addEventListener('change', filter);
+  dateTo.addEventListener('change', filter);
+
+  clearBtn.addEventListener('click', function() {
+    search.value = ''; dateFrom.value = ''; dateTo.value = '';
+    msgs.forEach(function(m, i) {
+      m.innerHTML = originals[i];
+      m.classList.remove('hidden', 'matched');
+    });
+    counter.textContent = '';
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault(); search.focus(); search.select();
+    }
+  });
+})();
+</script>
+</body>
+</html>

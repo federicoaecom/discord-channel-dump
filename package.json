@@ -1,0 +1,48 @@
+{
+  "name": "discord-channel-dump",
+  "version": "1.0.0",
+  "description": "Discord channel backup tool using browser automation",
+  "main": "bin/backup.js",
+  "bin": {
+    "discord-channel-dump": "bin/backup.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md"
+  ],
+  "scripts": {
+    "backup": "node bin/backup.js",
+    "regen": "node bin/regen-html.js",
+    "install-browser": "npx playwright install chromium",
+    "test": "node --test test/api/discord.test.js test/app.test.js test/browser/session.test.js test/cancel-token.test.js test/cli/backup-args.test.js test/cli.test.js test/cleanup.test.js test/config.test.js test/downloader.test.js test/fixture-server.test.js test/interrupt.test.js test/layout.test.js test/messages/normalize.test.js test/output/writer.test.js test/tooling-context.test.js test/ui/colors.test.js test/ui/prompt.test.js test/ui/progress.test.js test/utils.test.js test/utils/sanitize.test.js test/utils/html.test.js test/utils/filenames.test.js test/utils/icons.test.js test/utils/fs.test.js test/viewer-dom.test.js test/viewer/render.test.js test/viewer/template.test.js",
+    "test:watch": "node --test --watch test/api/discord.test.js test/app.test.js test/browser/session.test.js test/cancel-token.test.js test/cli/backup-args.test.js test/cli.test.js test/cleanup.test.js test/config.test.js test/downloader.test.js test/fixture-server.test.js test/interrupt.test.js test/layout.test.js test/messages/normalize.test.js test/output/writer.test.js test/tooling-context.test.js test/ui/colors.test.js test/ui/prompt.test.js test/ui/progress.test.js test/utils.test.js test/utils/sanitize.test.js test/utils/html.test.js test/utils/filenames.test.js test/utils/icons.test.js test/utils/fs.test.js test/viewer-dom.test.js test/viewer/render.test.js test/viewer/template.test.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "discord",
+    "backup",
+    "playwright",
+    "archive"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/federicoaecom/discord-channel-dump.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "playwright": "^1.45.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3"
+  }
+}

@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Runtime directories
+backups/
+browser-profile/
+
+# Temporary files
+*.log
+*_output.txt
+
+# Local tooling
+.codegraph/
+.atl/
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
+Thumbs.db

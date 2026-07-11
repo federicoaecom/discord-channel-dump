@@ -1,0 +1,69 @@
+schema: spec-driven
+
+project:
+  name: DISCORD-BACKUP
+  path: E:\\ECOM\\DISCORD-BACKUP
+
+context: |
+  Node.js CLI utility (discord-channel-dump) that backs up Discord text channels via Playwright browser automation.
+  Calls Discord's authenticated REST API from the browser to fetch messages and media, then writes messages.json and an offline HTML viewer.
+  Architecture: plain CommonJS modules with a bin/ + src/ layout: executable entries in bin/ and library code in src/.
+  Tests use node:test; ESLint, Prettier, and GitHub Actions CI are available.
+
+strict_tdd: true
+
+testing:
+  runner: node:test
+  strict_tdd: true
+  layers:
+    unit:
+      available: true
+      tool: node:test
+    integration:
+      available: false
+      tool: "—"
+    e2e:
+      available: false
+      tool: "—"
+  coverage:
+    available: false
+    command: "—"
+  quality:
+    linter:
+      available: true
+      command: npm run lint
+    type_checker:
+      available: false
+      command: "—"
+    formatter:
+      available: true
+      command: npm run format:check
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing CommonJS module patterns
+      - Keep config.js as single source of truth for tunables
+    tdd: true
+    test_command: npm test
+  verify:
+    test_command: npm test
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+review_budget:
+  max_changed_lines: 800
+  delivery_strategy: single-pr

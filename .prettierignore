@@ -1,0 +1,8 @@
+node_modules/
+.git/
+backups/
+browser-profile/
+package-lock.json
+*.md
+openspec/
+src/templates/viewer.html
