@@ -5,10 +5,11 @@
 
 "use strict";
 
+const { createHash } = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { sanitize } = require("../utils/sanitize");
-const { filenameFromUrl, uniqueFilename } = require("../utils/filenames");
+const { filenameFromUrl } = require("../utils/filenames");
 const { ensureDir } = require("../utils/fs");
 const { generateHtml } = require("../viewer/render");
 const { downloadFile } = require("../downloader");
@@ -16,12 +17,105 @@ const { green, yellow, dim } = require("../ui/colors");
 const logger = require("../ui/logger");
 const { renderProgressBar } = require("../ui/progress");
 
+const MAX_MEDIA_FILENAME_BYTES = 255;
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
 function handleDownloadError(e) {
   if (e.name === "CancelError" || /cancelled/i.test(e.message)) {
     throw e;
   }
+}
+
+function truncateUtf8(value, maxBytes) {
+  let result = "";
+  let byteLength = 0;
+
+  for (const codePoint of value) {
+    const codePointBytes = Buffer.byteLength(codePoint, "utf8");
+    if (byteLength + codePointBytes > maxBytes) break;
+    result += codePoint;
+    byteLength += codePointBytes;
+  }
+
+  return result;
+}
+
+function appendSourceHash(filename, source) {
+  const ext = path.extname(filename);
+  const base = path.basename(filename, ext);
+  const hash = createHash("sha256").update(source).digest("hex");
+  const hashSuffix = `_${hash}`;
+  const preservedExt =
+    Buffer.byteLength(hashSuffix + ext, "utf8") <= MAX_MEDIA_FILENAME_BYTES ? ext : "";
+  const maxBaseBytes =
+    MAX_MEDIA_FILENAME_BYTES - Buffer.byteLength(hashSuffix + preservedExt, "utf8");
+  return `${truncateUtf8(base, maxBaseBytes)}${hashSuffix}${preservedExt}`;
+}
+
+function planMediaFilenames(urls) {
+  const uniqueUrls = [...new Set(urls)].sort();
+  return new Map(uniqueUrls.map((url) => [url, appendSourceHash(filenameFromUrl(url), url)]));
+}
+
+async function downloadMediaType(messages, directory, type, cancelToken, downloadFileFn) {
+  for (const message of messages) message[type.localKey] = [];
+
+  const urls = messages.flatMap((message) =>
+    (message[type.sourceKey] || []).map((item) => type.getUrl(item))
+  );
+  const filenames = planMediaFilenames(urls);
+  if (filenames.size === 0) return;
+
+  const outcomes = new Map();
+  let processed = 0;
+  let downloaded = 0;
+  let reused = 0;
+  let failed = 0;
+  const startedAt = Date.now();
+
+  for (const message of messages) {
+    for (const item of message[type.sourceKey] || []) {
+      const url = type.getUrl(item);
+      if (!outcomes.has(url)) {
+        const filename = filenames.get(url);
+        const destPath = path.join(directory, filename);
+        let success = false;
+
+        if (fs.existsSync(destPath)) {
+          reused++;
+          success = true;
+        } else {
+          try {
+            await downloadFileFn(url, destPath, { cancelToken });
+            downloaded++;
+            success = true;
+          } catch (error) {
+            handleDownloadError(error);
+            failed++;
+            logger.write(`\n  ${yellow(`[skip ${type.shortLabel}]`)} ${error.message}\n`);
+          }
+        }
+
+        outcomes.set(url, { filename, success });
+        processed++;
+        const elapsed = ((Date.now() - startedAt) / 1000).toFixed(0);
+        logger.write(
+          `\r  ${renderProgressBar(Math.round((processed / filenames.size) * 100), {
+            label: type.label,
+          })} ${processed}/${filenames.size} unique | ${downloaded} downloaded ${reused} reused ${failed} failed ${elapsed}s`
+        );
+      }
+
+      const outcome = outcomes.get(url);
+      if (outcome.success) {
+        message[type.localKey].push(type.toLocal(item, outcome.filename));
+      }
+    }
+  }
+
+  logger.info(
+    `\n  ${green(`${type.label} done:`)} ${downloaded} downloaded, ${reused} reused, ${failed} failed.`
+  );
 }
 
 function resolveChannelDir(backupDir, channelName) {
@@ -67,90 +161,38 @@ async function downloadMedia(
   cancelToken = null,
   downloadFileFn = downloadFile
 ) {
-  // Images
-  const totalImages = messages.reduce((n, m) => n + (m.images || []).length, 0);
-  if (totalImages > 0) {
-    let done = 0,
-      skipped = 0,
-      i = 0;
-    const t0 = Date.now();
-    for (const msg of messages) {
-      msg.localImages = [];
-      for (const imgUrl of msg.images || []) {
-        i++;
-        const fname = uniqueFilename(imagesDir, filenameFromUrl(imgUrl));
-        const destPath = path.join(imagesDir, fname);
-        const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
-        logger.write(
-          `\r  ${renderProgressBar(Math.round((i / totalImages) * 100), {
-            label: "Images",
-          })} ${done}/${totalImages} OK ${skipped} skipped ${elapsed}s`
-        );
-        if (!fs.existsSync(destPath)) {
-          try {
-            await downloadFileFn(imgUrl, destPath, { cancelToken });
-            done++;
-          } catch (e) {
-            handleDownloadError(e);
-            skipped++;
-            logger.write(`\n  ${yellow("[skip img]")} ${e.message}\n`);
-          }
-        } else {
-          done++;
-        }
-        msg.localImages.push(path.posix.join("images", fname));
-      }
-    }
-    logger.info(`\n  ${green("Images done:")} ${done} saved, ${skipped} failed.`);
-  } else {
-    messages.forEach((m) => {
-      m.localImages = [];
-    });
-  }
+  await downloadMediaType(
+    messages,
+    imagesDir,
+    {
+      label: "Images",
+      shortLabel: "img",
+      sourceKey: "images",
+      localKey: "localImages",
+      getUrl: (url) => url,
+      toLocal: (_url, filename) => path.posix.join("images", filename),
+    },
+    cancelToken,
+    downloadFileFn
+  );
 
-  // Attachments
-  const totalAtts = messages.reduce((n, m) => n + (m.attachments || []).length, 0);
-  if (totalAtts > 0) {
-    let done = 0,
-      skipped = 0,
-      i = 0;
-    const t0 = Date.now();
-    for (const msg of messages) {
-      msg.localAttachments = [];
-      for (const att of msg.attachments || []) {
-        i++;
-        const fname = uniqueFilename(attachmentsDir, filenameFromUrl(att.url));
-        const destPath = path.join(attachmentsDir, fname);
-        const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
-        logger.write(
-          `\r  ${renderProgressBar(Math.round((i / totalAtts) * 100), {
-            label: "Attachments",
-          })} ${done}/${totalAtts} OK ${skipped} skipped ${elapsed}s`
-        );
-        if (!fs.existsSync(destPath)) {
-          try {
-            await downloadFileFn(att.url, destPath, { cancelToken });
-            done++;
-          } catch (e) {
-            handleDownloadError(e);
-            skipped++;
-            logger.write(`\n  ${yellow("[skip att]")} ${e.message}\n`);
-          }
-        } else {
-          done++;
-        }
-        msg.localAttachments.push({
-          label: att.label,
-          path: path.posix.join("attachments", fname),
-        });
-      }
-    }
-    logger.info(`\n  ${green("Attachments done:")} ${done} saved, ${skipped} failed.`);
-  } else {
-    messages.forEach((m) => {
-      m.localAttachments = [];
-    });
-  }
+  await downloadMediaType(
+    messages,
+    attachmentsDir,
+    {
+      label: "Attachments",
+      shortLabel: "att",
+      sourceKey: "attachments",
+      localKey: "localAttachments",
+      getUrl: (attachment) => attachment.url,
+      toLocal: (attachment, filename) => ({
+        label: attachment.label,
+        path: path.posix.join("attachments", filename),
+      }),
+    },
+    cancelToken,
+    downloadFileFn
+  );
 }
 
 /**

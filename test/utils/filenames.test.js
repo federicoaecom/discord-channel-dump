@@ -17,6 +17,7 @@ describe("filenameFromUrl", () => {
   it("returns a fallback name for an invalid URL", () => {
     const result = filenameFromUrl("not-a-url");
     assert.match(result, /^file_\d+$/);
+    assert.equal(filenameFromUrl("not-a-url"), result);
   });
 
   it("replaces illegal characters in the decoded filename", () => {

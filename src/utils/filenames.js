@@ -4,8 +4,14 @@
 
 "use strict";
 
+const { createHash } = require("crypto");
 const fs = require("fs");
 const path = require("path");
+
+function fallbackFilename(rawUrl) {
+  const digest = createHash("sha256").update(String(rawUrl)).digest("hex");
+  return `file_${BigInt(`0x${digest}`).toString(10)}`;
+}
 
 /**
  * Derive a safe filename from a URL.
@@ -21,9 +27,9 @@ function filenameFromUrl(rawUrl) {
     // Strip any characters illegal in filenames (including stray slashes after decode).
     // eslint-disable-next-line no-control-regex
     name = name.replace(/[/\\<>:"|?*\x00-\x1F]/g, "_").trim();
-    return name || `file_${Date.now()}`;
+    return name || fallbackFilename(rawUrl);
   } catch {
-    return `file_${Date.now()}`;
+    return fallbackFilename(rawUrl);
   }
 }
 
