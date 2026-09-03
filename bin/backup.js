@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Discord Channel Dump — CLI entry point.
  *
@@ -27,7 +28,7 @@ function applyOverrides(config, args) {
   return { ...config, ...overrides };
 }
 
-async function main(argv) {
+async function main(argv, runSession = runBrowserSession) {
   const args = parseCliArgs(argv);
   if (args.error) {
     logger.error(`Error: ${args.error}`);
@@ -45,19 +46,27 @@ async function main(argv) {
 
   logger.setVerbose(args.verbose);
 
-  const cfg = applyOverrides(config.loadConfig({ dryRun: args.dryRun }), args);
-
   try {
-    config.validateConfig(cfg);
-  } catch (e) {
-    if (e instanceof config.ConfigError) {
-      logger.error(`Error: ${e.message}`);
-      process.exit(1);
-    }
-    throw e;
-  }
+    const cfg = applyOverrides(config.loadConfig({ dryRun: args.dryRun }), args);
 
-  await runBrowserSession(cfg, sharedCancelToken);
+    try {
+      config.validateConfig(cfg);
+    } catch (e) {
+      if (e instanceof config.ConfigError) {
+        logger.error(`Error: ${e.message}`);
+        process.exit(1);
+      }
+      throw e;
+    }
+
+    logger.debug(`[debug] Output directory: ${path.resolve(cfg.backupDir)}`);
+    logger.debug(`[debug] Profile directory: ${path.resolve(cfg.profileDir)}`);
+    logger.debug(`[debug] Dry run: ${cfg.dryRun ? "enabled" : "disabled"}`);
+
+    await runSession(cfg, sharedCancelToken);
+  } finally {
+    logger.setVerbose(false);
+  }
 }
 
 if (require.main === module) {
