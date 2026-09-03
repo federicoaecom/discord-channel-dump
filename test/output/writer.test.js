@@ -10,6 +10,21 @@ describe("saveChannel", () => {
     return fs.mkdtempSync(path.join(os.tmpdir(), "writer-"));
   }
 
+  async function assertRejectedWithoutWrites(channelName, expectedError) {
+    const parentDir = tmpDir();
+    const backupDir = path.join(parentDir, "backups");
+
+    try {
+      await assert.rejects(
+        saveChannel(channelName, [], { backupDir }, null, fakeDownloadMedia),
+        expectedError
+      );
+      assert.deepEqual(fs.readdirSync(parentDir), []);
+    } finally {
+      fs.rmSync(parentDir, { recursive: true, force: true });
+    }
+  }
+
   // eslint-disable-next-line no-unused-vars
   function fakeDownloadMedia(messages, imagesDir, attachmentsDir, _) {
     for (const m of messages) {
@@ -44,7 +59,7 @@ describe("saveChannel", () => {
 
     const result = await saveChannel("test-channel", messages, config, null, fakeDownloadMedia);
 
-    const channelDir = path.join(dir, "test-channel");
+    const channelDir = path.resolve(dir, "test-channel");
     assert.equal(fs.existsSync(path.join(channelDir, "messages.json")), true);
     assert.equal(fs.existsSync(path.join(channelDir, "index.html")), true);
     assert.equal(fs.existsSync(path.join(channelDir, "images", "img_photo.png")), true);
@@ -63,6 +78,29 @@ describe("saveChannel", () => {
     await saveChannel("bad:name?", messages, config, null, fakeDownloadMedia);
 
     assert.equal(fs.existsSync(path.join(dir, "bad_name_", "messages.json")), true);
+  });
+
+  for (const channelName of ["###", ".", ".."]) {
+    it(`rejects invalid sanitized channel name ${JSON.stringify(channelName)}`, async () => {
+      await assertRejectedWithoutWrites(channelName, /expected a non-empty channel subdirectory/);
+    });
+  }
+
+  it("rejects Windows reserved names without writing", async () => {
+    const reservedNames = [
+      "CON",
+      "prn.txt",
+      "AUX.",
+      "nul   ",
+      "COM1.json",
+      "com9... ",
+      "LPT1.backup",
+      "lpt9. ",
+    ];
+
+    for (const channelName of reservedNames) {
+      await assertRejectedWithoutWrites(channelName, /reserved on Windows/);
+    }
   });
 
   it("reuses existing image files and marks them in localImages", async () => {
