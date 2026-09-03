@@ -1,0 +1,63 @@
+name: Work item
+description: Propose an implementation change for maintainer review.
+title: "[Work]: "
+labels:
+  - "status:needs-review"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe a focused, reviewable outcome. Maintainers will approve the work before implementation begins.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: State the proposed work in one concise sentence.
+      placeholder: Add validation for exported backup files
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-outcome
+    attributes:
+      label: Problem and desired outcome
+      description: Explain the problem, who it affects, and the outcome this work should produce.
+      placeholder: Describe the current limitation and the observable result after this work is complete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: List objective, testable conditions that define completion.
+      placeholder: |
+        - [ ] The expected behavior is implemented.
+        - [ ] Relevant automated tests pass.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Work type
+      description: Select the single type that should also classify the pull request.
+      multiple: false
+      options:
+        - Bug fix
+        - New feature
+        - Documentation only
+        - Code refactoring
+        - Maintenance/tooling
+        - Breaking change
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Contributor affirmation
+      options:
+        - label: I confirm that this issue contains no secrets or private data.
+          required: true

@@ -1,0 +1,83 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  governance:
+    name: Validate governance
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate issue approval and PR type
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pullRequest = context.payload.pull_request;
+            const repository = context.payload.repository;
+            const body = pullRequest.body ?? "";
+            const closingPattern = /\b(?:closes|fixes|resolves)\s+#([1-9]\d*)\b/gi;
+            const closingReferences = [...body.matchAll(closingPattern)];
+
+            if (closingReferences.length !== 1) {
+              core.setFailed(
+                "The PR body must contain exactly one Closes, Fixes, or Resolves #N reference."
+              );
+              return;
+            }
+
+            const issueNumber = Number(closingReferences[0][1]);
+            let issue;
+
+            try {
+              const response = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+              });
+              issue = response.data;
+            } catch (error) {
+              if (error.status === 404) {
+                core.setFailed(`Issue #${issueNumber} does not exist in this repository.`);
+                return;
+              }
+              throw error;
+            }
+
+            const expectedIssueUrl = `${repository.html_url}/issues/${issueNumber}`;
+            if (issue.html_url.toLowerCase() !== expectedIssueUrl.toLowerCase() || issue.pull_request) {
+              core.setFailed(`Reference #${issueNumber} must identify an issue in this repository.`);
+              return;
+            }
+
+            const labelName = (label) => (typeof label === "string" ? label : label.name);
+            const issueLabels = issue.labels.map(labelName).filter(Boolean);
+            if (!issueLabels.includes("status:approved")) {
+              core.setFailed(`Issue #${issueNumber} must have the status:approved label.`);
+              return;
+            }
+
+            const permittedTypeLabels = new Set([
+              "type:bug",
+              "type:feature",
+              "type:docs",
+              "type:refactor",
+              "type:chore",
+              "type:breaking-change",
+            ]);
+            const pullRequestLabels = pullRequest.labels.map(labelName).filter(Boolean);
+            const typeLabels = pullRequestLabels.filter((label) => label.startsWith("type:"));
+
+            if (typeLabels.length !== 1 || !permittedTypeLabels.has(typeLabels[0])) {
+              core.setFailed(
+                "The PR must have exactly one permitted type:* label: " +
+                  [...permittedTypeLabels].join(", ")
+              );
+            }
