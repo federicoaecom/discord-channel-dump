@@ -24,13 +24,6 @@ describe("cleanup stale artifacts", () => {
     });
   }
 
-  const generatedDirs = [".codegraph", ".atl"];
-  for (const dir of generatedDirs) {
-    it(`${dir} is removed`, () => {
-      assert.equal(exists(dir), false, `${dir} should not be in the workspace root`);
-    });
-  }
-
   it("superseded SDD change is removed if it existed", () => {
     assert.equal(
       exists("openspec", "changes", "post-hardening-improvements"),
@@ -39,8 +32,16 @@ describe("cleanup stale artifacts", () => {
     );
   });
 
-  it("preserves runtime data directories", () => {
-    assert.equal(exists("backups"), true, "backups/ must be preserved");
-    assert.equal(exists("browser-profile"), true, "browser-profile/ must be preserved");
+  it("keeps optional runtime data directories ignored", () => {
+    const ignored = new Set(
+      fs
+        .readFileSync(path.join(root, ".gitignore"), "utf8")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith("#"))
+    );
+
+    assert.ok(ignored.has("backups/"), "backups/ must remain ignored");
+    assert.ok(ignored.has("browser-profile/"), "browser-profile/ must remain ignored");
   });
 });

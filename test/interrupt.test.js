@@ -6,6 +6,36 @@ const fs = require("node:fs");
 
 const helperPath = path.resolve(__dirname, "helpers", "run-interrupt.js");
 
+function waitForReady(child, getOutput) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timeout);
+      child.off("message", onMessage);
+      child.off("close", onClose);
+    };
+    const onMessage = (message) => {
+      if (message?.type !== "part-ready") return;
+      cleanup();
+      resolve(message);
+    };
+    const onClose = (code, signal) => {
+      cleanup();
+      reject(
+        new Error(
+          `helper exited before the download became active (code=${code}, signal=${signal})\n${getOutput()}`
+        )
+      );
+    };
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error(`timed out waiting for active download\n${getOutput()}`));
+    }, 5000);
+
+    child.on("message", onMessage);
+    child.on("close", onClose);
+  });
+}
+
 describe("safe interruption", () => {
   it("cleans up .part files and exits nonzero on SIGINT", async () => {
     const child = spawn(process.execPath, [helperPath], {
@@ -22,34 +52,31 @@ describe("safe interruption", () => {
       output += d;
     });
 
-    let partPath = null;
-    for (let i = 0; i < 50; i++) {
-      const match = output.match(/\.part path: (.+)/);
-      if (match) {
-        partPath = match[1].trim();
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 100));
-    }
-
-    // Give the active download enough time to create the .part file.
-    await new Promise((r) => setTimeout(r, 300));
-
-    // Windows does not deliver SIGINT to a spawned Node process in a way that
-    // runs the JS handler, so trigger the same handler path over IPC.
-    if (process.platform === "win32") {
-      child.send("interrupt");
-    } else {
-      child.kill("SIGINT");
-    }
-
-    const exitCode = await new Promise((resolve) => {
-      child.on("close", (code) => resolve(code));
+    const closePromise = new Promise((resolve) => {
+      child.once("close", (code, signal) => resolve({ code, signal }));
     });
+    let tmpDir;
 
-    assert.notEqual(exitCode, 0, "expected nonzero exit code after SIGINT");
-    if (partPath && fs.existsSync(partPath)) {
-      assert.fail(`.part file still exists: ${partPath}`);
+    try {
+      const ready = await waitForReady(child, () => output);
+      tmpDir = ready.tmpDir;
+      assert.equal(fs.existsSync(ready.partPath), true, "expected an active .part file");
+
+      // Windows cannot deliver SIGINT to the child, so use its IPC bridge to
+      // emit the same signal event handled on POSIX.
+      if (process.platform === "win32") child.send("interrupt");
+      else child.kill("SIGINT");
+
+      const { code, signal } = await closePromise;
+      assert.equal(code, 1, `expected exit code 1 after SIGINT, received signal ${signal}`);
+      assert.equal(
+        fs.existsSync(ready.partPath),
+        false,
+        `.part file still exists: ${ready.partPath}`
+      );
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) child.kill();
+      if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 });

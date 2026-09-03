@@ -7,7 +7,36 @@ const { startServer } = require("./fixture-server");
 const { saveChannel } = require("../../src/output/writer");
 const { createCancelToken } = require("../../src/cancel-token");
 const { loadConfig } = require("../../src/config");
-const { shutdown } = require("../../src/app");
+const { registerShutdown } = require("../../src/app");
+
+function waitForFile(filePath, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const directory = path.dirname(filePath);
+    const filename = path.basename(filePath);
+    let watcher;
+    let timeout;
+
+    const finish = (error) => {
+      clearTimeout(timeout);
+      watcher?.close();
+      if (error) reject(error);
+      else resolve();
+    };
+
+    const check = () => {
+      if (fs.existsSync(filePath)) finish();
+    };
+
+    watcher = fs.watch(directory, (_eventType, changedFilename) => {
+      if (!changedFilename || changedFilename.toString() === filename) check();
+    });
+    timeout = setTimeout(
+      () => finish(new Error(`Timed out waiting for active download: ${filePath}`)),
+      timeoutMs
+    );
+    check();
+  });
+}
 
 async function main() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "interrupt-"));
@@ -54,22 +83,29 @@ async function main() {
   console.log(`.part path: ${partPath}`);
 
   const cancelToken = createCancelToken();
+  registerShutdown(cancelToken, cfg);
 
   // Windows does not deliver SIGINT to a spawned Node process in a way that
-  // runs the JS handler, so trigger the same shutdown path over IPC.
-  process.on("message", async (msg) => {
-    if (msg === "interrupt") {
-      await shutdown("SIGINT", cancelToken, cfg.backupDir);
-      process.exit(1);
-    }
+  // runs the JS handler, so emit it through the IPC test bridge.
+  process.on("message", (msg) => {
+    if (msg === "interrupt") process.emit("SIGINT");
   });
 
   try {
-    await saveChannel("test", messages, cfg, cancelToken);
+    const savePromise = saveChannel("test", messages, cfg, cancelToken);
+    await Promise.race([
+      waitForFile(partPath, 5000),
+      savePromise.then(() => {
+        throw new Error("Download completed before interruption was ready");
+      }),
+    ]);
+    process.send?.({ type: "part-ready", partPath, tmpDir });
+    await savePromise;
   } catch (err) {
     console.error("saveChannel error:", err.message);
   } finally {
     server.close();
+    if (process.connected) process.disconnect();
   }
 }
 
