@@ -6,11 +6,11 @@
 
 ## Architectural Decisions
 
-### 1. Install Playwright browsers in CI
+### 1. Enforce the modern Node.js baseline and install Playwright Chromium in CI
 
-**Decision**: Add `npx playwright install chromium` as a CI step.
+**Decision**: Declare `^20.19.0 || ^22.13.0 || >=24` in `package.json`, run CI on Node `20.x`, `22.x`, and `24.x`, and add `npx playwright install chromium` as a CI step.
 
-**Rationale**: The test suite includes real browser tests (`test/browser/session.test.js`, `test/viewer-dom.test.js`). Without the browser binary, `npm test` fails in CI.
+**Rationale**: The confirmed support contract intentionally excludes Node 18. The CI matrix must exercise every supported release line, and the test suite includes real browser tests (`test/browser/session.test.js`, `test/viewer-dom.test.js`) that require the Chromium binary.
 
 ### 2. Complete config validation
 
@@ -20,7 +20,7 @@
 
 ### 3. Make config immutable
 
-**Decision**: Export a `loadConfig(overrides)` factory that returns a deep-frozen config object. `bin/backup.js` will use this factory instead of mutating a shared live object.
+**Decision**: Export a `loadConfig(overrides)` factory that returns a frozen config object. `bin/backup.js` will use this factory instead of mutating a shared live object.
 
 **Rationale**: Prevents accidental cross-module mutation and makes tests deterministic. Backwards compatibility is preserved by still exporting `defaults`, `validateConfig`, and `ConfigError`.
 
@@ -54,8 +54,7 @@ module.exports = {
 ### `bin/backup.js`
 
 ```js
-const config = loadConfig();
-applyOverrides(config, args);
+const config = applyOverrides(loadConfig(), args);
 
 try {
   validateConfig(config);
@@ -72,4 +71,5 @@ try {
 
 - Unit tests for `validateConfig` covering all tunables.
 - CLI test asserting friendly config error output.
-- CI workflow verification by inspection.
+- Package engine and CI matrix inspection against the supported Node.js baseline.
+- CI workflow inspection for Chromium installation and step ordering.

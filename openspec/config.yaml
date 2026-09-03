@@ -1,7 +1,7 @@
 schema: spec-driven
 
 project:
-  name: DISCORD-BACKUP
+  name: discord-channel-dump
   path: E:\\ECOM\\DISCORD-BACKUP
 
 context: |
@@ -10,21 +10,30 @@ context: |
   Architecture: plain CommonJS modules with a bin/ + src/ layout: executable entries in bin/ and library code in src/.
   Tests use node:test; ESLint, Prettier, and GitHub Actions CI are available.
 
-strict_tdd: true
+strict_tdd: false
 
 testing:
-  runner: node:test
-  strict_tdd: true
+  strict_tdd: false
+  workspace_test_command: npm test
+  projects:
+    - path: .
+      stack: Node.js CommonJS CLI (Node ^20.19.0 || ^22.13.0 || >=24)
+      test_command: npm test
+      framework: node:test with Playwright browser tests
+      coverage_command: "—"
+      linter_command: npm run lint
+      type_checker_command: "—"
+      formatter_command: npm run format:check
   layers:
     unit:
       available: true
       tool: node:test
     integration:
-      available: false
-      tool: "—"
+      available: true
+      tool: node:test with local fixture servers and subprocesses
     e2e:
-      available: false
-      tool: "—"
+      available: true
+      tool: Playwright 1.62.1 via node:test
   coverage:
     available: false
     command: "—"
@@ -55,7 +64,7 @@ rules:
     guidelines:
       - Follow existing CommonJS module patterns
       - Keep config.js as single source of truth for tunables
-    tdd: true
+    tdd: false
     test_command: npm test
   verify:
     test_command: npm test
@@ -65,5 +74,5 @@ rules:
     - Warn before merging destructive deltas
 
 review_budget:
-  max_changed_lines: 800
-  delivery_strategy: single-pr
+  max_changed_lines: 400
+  delivery_strategy: auto-chain
