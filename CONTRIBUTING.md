@@ -4,7 +4,7 @@ Thanks for taking the time to contribute. This document covers the basics of get
 
 ## Setup
 
-1. Install Node.js 18 or later.
+1. Install Node.js `^20.19.0`, `^22.13.0`, or `>=24`.
 2. Install dependencies and Playwright's Chromium browser:
 
    ```bash

@@ -10,10 +10,10 @@ This document helps future agents (and humans) get oriented in the `discord-chan
 
 ## Stack
 
-- **Runtime**: Node.js 18+
+- **Runtime**: Node.js 20.19+, 22.13+, or 24+
 - **Package manager**: npm
 - **Language**: JavaScript (CommonJS)
-- **Browser automation**: Playwright 1.45+
+- **Browser automation**: Playwright 1.62.1
 - **Tests**: Node.js built-in `node:test`
 - **Quality**: ESLint and Prettier
 - **CI**: GitHub Actions

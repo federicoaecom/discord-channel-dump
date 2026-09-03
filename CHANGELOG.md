@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Raised the minimum Node.js versions to `^20.19.0`, `^22.13.0`, or `>=24`.
+
 ## [1.0.0] - 2026-07-11
 
 ### Added
