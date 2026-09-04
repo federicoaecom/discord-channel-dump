@@ -5,11 +5,10 @@
 
 "use strict";
 
-const { createHash } = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { sanitize } = require("../utils/sanitize");
-const { filenameFromUrl } = require("../utils/filenames");
+const { mediaFilenameFromUrl } = require("../utils/filenames");
 const { ensureDir } = require("../utils/fs");
 const { generateHtml } = require("../viewer/render");
 const { downloadFile } = require("../downloader");
@@ -17,7 +16,6 @@ const { green, yellow, dim } = require("../ui/colors");
 const logger = require("../ui/logger");
 const { renderProgressBar } = require("../ui/progress");
 
-const MAX_MEDIA_FILENAME_BYTES = 255;
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
 function handleDownloadError(e) {
@@ -26,35 +24,12 @@ function handleDownloadError(e) {
   }
 }
 
-function truncateUtf8(value, maxBytes) {
-  let result = "";
-  let byteLength = 0;
-
-  for (const codePoint of value) {
-    const codePointBytes = Buffer.byteLength(codePoint, "utf8");
-    if (byteLength + codePointBytes > maxBytes) break;
-    result += codePoint;
-    byteLength += codePointBytes;
-  }
-
-  return result;
-}
-
-function appendSourceHash(filename, source) {
-  const ext = path.extname(filename);
-  const base = path.basename(filename, ext);
-  const hash = createHash("sha256").update(source).digest("hex");
-  const hashSuffix = `_${hash}`;
-  const preservedExt =
-    Buffer.byteLength(hashSuffix + ext, "utf8") <= MAX_MEDIA_FILENAME_BYTES ? ext : "";
-  const maxBaseBytes =
-    MAX_MEDIA_FILENAME_BYTES - Buffer.byteLength(hashSuffix + preservedExt, "utf8");
-  return `${truncateUtf8(base, maxBaseBytes)}${hashSuffix}${preservedExt}`;
-}
-
 function planMediaFilenames(urls) {
-  const uniqueUrls = [...new Set(urls)].sort();
-  return new Map(uniqueUrls.map((url) => [url, appendSourceHash(filenameFromUrl(url), url)]));
+  const filenames = new Map();
+  for (const url of new Set(urls)) {
+    filenames.set(url, mediaFilenameFromUrl(url));
+  }
+  return filenames;
 }
 
 async function downloadMediaType(messages, directory, type, cancelToken, downloadFileFn) {

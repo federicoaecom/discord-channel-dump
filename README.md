@@ -96,7 +96,7 @@ backups/
       video_<sha256>.mp4
 ```
 
-`<sha256>` represents the 64-character lowercase SHA-256 digest of the complete source URL as received. This keeps different source URLs distinct even when they share a filename. Media filenames are limited to 255 UTF-8 bytes by truncating the readable basename when necessary; the extension is retained whenever the hash suffix and extension fit. Source URLs are not canonicalized before hashing.
+`<sha256>` represents the 64-character lowercase SHA-256 digest of the canonical media identity: the URL origin and path plus the remaining query parameters in sorted order. Volatile Discord CDN signature parameters (`ex`, `is`, `hm`, matched case-insensitively) and URL fragments are ignored, so rotating signatures reuse the same file instead of downloading duplicates. Every other query parameter keeps resources distinct, even when they share a filename. Media filenames are limited to 255 UTF-8 bytes by truncating the readable basename when necessary; the extension is retained whenever the hash suffix and extension fit.
 
 ### HTML Viewer (`index.html`)
 
