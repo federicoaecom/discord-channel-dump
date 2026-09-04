@@ -106,9 +106,23 @@ describe("validateConfig", () => {
     );
   });
 
+  it("rejects a non-integer maxRetries", () => {
+    assert.throws(
+      () => validateConfig(makeCfg({ maxRetries: 1.5 })),
+      /maxRetries must be a positive integer/
+    );
+  });
+
   it("rejects a non-positive maxRedirects", () => {
     assert.throws(
       () => validateConfig(makeCfg({ maxRedirects: -1 })),
+      /maxRedirects must be a positive integer/
+    );
+  });
+
+  it("rejects a non-finite maxRedirects", () => {
+    assert.throws(
+      () => validateConfig(makeCfg({ maxRedirects: Infinity })),
       /maxRedirects must be a positive integer/
     );
   });
@@ -120,9 +134,23 @@ describe("validateConfig", () => {
     );
   });
 
+  it("rejects a non-finite retryDelayMs", () => {
+    assert.throws(
+      () => validateConfig(makeCfg({ retryDelayMs: Infinity })),
+      /retryDelayMs must be a non-negative number/
+    );
+  });
+
   it("rejects a negative jitterMaxMs", () => {
     assert.throws(
       () => validateConfig(makeCfg({ jitterMaxMs: -1 })),
+      /jitterMaxMs must be a non-negative number/
+    );
+  });
+
+  it("rejects a non-finite jitterMaxMs", () => {
+    assert.throws(
+      () => validateConfig(makeCfg({ jitterMaxMs: NaN })),
       /jitterMaxMs must be a non-negative number/
     );
   });

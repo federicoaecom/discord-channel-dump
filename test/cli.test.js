@@ -47,9 +47,10 @@ function runBackupMain(args, options = {}) {
 }
 
 describe("CLI exports", () => {
-  it("backup.js exports parseCliArgs and applyOverrides", () => {
+  it("backup.js exports parseCliArgs, applyOverrides, and handleFatalError", () => {
     assert.equal(typeof backup.parseCliArgs, "function");
     assert.equal(typeof backup.applyOverrides, "function");
+    assert.equal(typeof backup.handleFatalError, "function");
   });
 
   it("regen-html.js exports parseCliArgs", () => {
@@ -98,6 +99,53 @@ describe("applyOverrides", () => {
     const result = backup.applyOverrides(cfg, { output: "./out", profile: "./prof" });
     assert.equal(result.backupDir, path.resolve("./out"));
     assert.equal(result.profileDir, path.resolve("./prof"));
+    assert.equal(Object.isFrozen(result), true);
+  });
+});
+
+describe("handleFatalError", () => {
+  it("prints an unexpected error stack before exiting", () => {
+    const output = [];
+    const originalError = console.error;
+    const originalExit = process.exit;
+    console.error = (...args) => output.push(args.join(" "));
+    process.exit = (code) => {
+      throw new Error(`process.exit:${code}`);
+    };
+
+    try {
+      const error = new Error("unexpected failure");
+      error.stack = "Error: unexpected failure\n    at test";
+      assert.throws(() => backup.handleFatalError(error), /process\.exit/);
+    } finally {
+      console.error = originalError;
+      process.exit = originalExit;
+    }
+
+    assert.match(output.join("\n"), /Fatal error: Error: unexpected failure/);
+    assert.match(output.join("\n"), /at test/);
+  });
+
+  it("falls back to an unexpected error message when no stack is available", () => {
+    const output = [];
+    const originalError = console.error;
+    const originalExit = process.exit;
+    console.error = (...args) => output.push(args.join(" "));
+    process.exit = (code) => {
+      throw new Error(`process.exit:${code}`);
+    };
+
+    try {
+      assert.throws(
+        () => backup.handleFatalError({ message: "unexpected failure" }),
+        /process\.exit/
+      );
+    } finally {
+      console.error = originalError;
+      process.exit = originalExit;
+    }
+
+    assert.match(output.join("\n"), /Fatal error: unexpected failure/);
   });
 });
 

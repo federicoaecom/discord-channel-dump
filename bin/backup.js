@@ -25,7 +25,12 @@ function applyOverrides(config, args) {
   if (args.profile) {
     overrides.profileDir = path.resolve(args.profile);
   }
-  return { ...config, ...overrides };
+  return Object.freeze({ ...config, ...overrides });
+}
+
+function handleFatalError(error) {
+  logger.error("Fatal error:", error.stack || error.message);
+  process.exit(1);
 }
 
 async function main(argv, runSession = runBrowserSession) {
@@ -70,14 +75,12 @@ async function main(argv, runSession = runBrowserSession) {
 }
 
 if (require.main === module) {
-  main(process.argv.slice(2)).catch((err) => {
-    logger.error("Fatal error:", err.message);
-    process.exit(1);
-  });
+  main(process.argv.slice(2)).catch(handleFatalError);
 }
 
 module.exports = {
   parseCliArgs,
   applyOverrides,
+  handleFatalError,
   main,
 };
