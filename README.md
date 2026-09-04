@@ -21,6 +21,8 @@ The browser opens **once** and stays authenticated between runs thanks to the pe
 
 ## Installation (First Time)
 
+Requires Node.js `^20.19.0`, `^22.13.0`, or `>=24`.
+
 ```bash
 npm install
 npx playwright install chromium
