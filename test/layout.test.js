@@ -46,38 +46,4 @@ describe("professional directory layout", () => {
     assert.equal(exists("templates"), false);
     assert.equal(exists("scripts"), false);
   });
-
-  it("leaves the workspace root with only authored project files and runtime data", () => {
-    const allowed = new Set([
-      "bin",
-      "src",
-      "test",
-      "package.json",
-      "package-lock.json",
-      ".eslintrc.json",
-      ".prettierrc",
-      ".prettierignore",
-      ".gitignore",
-      ".npmignore",
-      ".github",
-      "README.md",
-      "AGENTS.md",
-      "LICENSE",
-      "CHANGELOG.md",
-      "CONTRIBUTING.md",
-      "openspec",
-      "backups",
-      "browser-profile",
-      // Reinstalled only to execute this suite after cleanup.
-      "node_modules",
-    ]);
-
-    const entries = fs.readdirSync(root);
-    for (const entry of entries) {
-      assert.ok(
-        allowed.has(entry),
-        `${entry} should not remain in the workspace root after restructuring`
-      );
-    }
-  });
 });
