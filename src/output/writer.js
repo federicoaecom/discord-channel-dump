@@ -16,10 +16,39 @@ const { green, yellow, dim } = require("../ui/colors");
 const logger = require("../ui/logger");
 const { renderProgressBar } = require("../ui/progress");
 
+const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+
 function handleDownloadError(e) {
   if (e.name === "CancelError" || /cancelled/i.test(e.message)) {
     throw e;
   }
+}
+
+function resolveChannelDir(backupDir, channelName) {
+  const sanitizedName = sanitize(channelName);
+  if (sanitizedName === "" || sanitizedName === "." || sanitizedName === "..") {
+    throw new Error(
+      `Invalid channel name "${sanitizedName}": expected a non-empty channel subdirectory`
+    );
+  }
+
+  const portableName = sanitizedName.replace(/[ .]+$/g, "");
+  const deviceName = portableName.split(".", 1)[0].replace(/ +$/g, "");
+  if (WINDOWS_RESERVED_NAME.test(deviceName)) {
+    throw new Error(`Invalid channel name "${sanitizedName}": reserved on Windows`);
+  }
+
+  const baseDir = path.resolve(backupDir);
+  const channelDir = path.resolve(baseDir, sanitizedName);
+  const relative = path.relative(baseDir, channelDir);
+  const escapesBase = relative === ".." || relative.startsWith(`..${path.sep}`);
+  if (relative === "" || escapesBase || path.isAbsolute(relative)) {
+    throw new Error(
+      `Invalid channel name "${sanitizedName}": resolved directory must be inside backupDir`
+    );
+  }
+
+  return channelDir;
 }
 
 /**
@@ -126,7 +155,7 @@ async function downloadMedia(
 
 /**
  * Persist a channel backup as messages.json and index.html.
- * @param {string} channelName - Sanitized channel name.
+ * @param {string} channelName - Raw channel name.
  * @param {Array<Object>} messages - Normalized messages to save.
  * @param {Object} config - Configuration object with backupDir.
  * @param {Object|null} [cancelToken] - Optional cancellation token.
@@ -140,7 +169,7 @@ async function saveChannel(
   cancelToken = null,
   downloadMediaFn = downloadMedia
 ) {
-  const channelDir = path.join(config.backupDir, sanitize(channelName));
+  const channelDir = resolveChannelDir(config.backupDir, channelName);
   const imagesDir = path.join(channelDir, "images");
   const attachmentsDir = path.join(channelDir, "attachments");
   ensureDir(channelDir);
