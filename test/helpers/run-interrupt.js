@@ -1,5 +1,6 @@
 "use strict";
 
+const { createHash } = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -66,6 +67,7 @@ async function main() {
     },
   ]);
   const port = server.address().port;
+  const slowFileUrl = `http://localhost:${port}/slow-file`;
 
   const messages = [
     {
@@ -73,12 +75,13 @@ async function main() {
       content: "message",
       author: { username: "user" },
       timestamp: "2024-01-01T00:00:00.000Z",
-      attachments: [{ filename: "slow-file.png", url: `http://localhost:${port}/slow-file` }],
+      attachments: [{ filename: "slow-file.png", url: slowFileUrl }],
       embeds: [],
     },
   ];
 
-  const partPath = path.join(tmpDir, "test", "attachments", "slow-file.part");
+  const sourceHash = createHash("sha256").update(slowFileUrl).digest("hex");
+  const partPath = path.join(tmpDir, "test", "attachments", `slow-file_${sourceHash}.part`);
   console.log(`server-port ${port}`);
   console.log(`.part path: ${partPath}`);
 
