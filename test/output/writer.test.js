@@ -197,6 +197,59 @@ describe("saveChannel", () => {
     assert.equal(fs.readFileSync(path.join(dir, secondRun[0].localImages[0]), "utf8"), urlB);
   });
 
+  it("reuses the same path when only volatile CDN signatures rotate", async () => {
+    const dir = tmpDir();
+    const imagesDir = path.join(dir, "images");
+    const attachmentsDir = path.join(dir, "attachments");
+    fs.mkdirSync(imagesDir, { recursive: true });
+    fs.mkdirSync(attachmentsDir, { recursive: true });
+
+    const base = "https://cdn.discordapp.com/attachments/123/456/photo.png";
+    const urlA = `${base}?ex=111&is=aaa&hm=xxx`;
+    const urlB = `${base}?hm=yyy&ex=222&is=bbb`;
+    const downloads = [];
+    async function fakeDownloadFile(url, dest) {
+      downloads.push(url);
+      fs.writeFileSync(dest, url);
+    }
+
+    const firstRun = [{ images: [urlA], attachments: [] }];
+    await downloadMedia(firstRun, imagesDir, attachmentsDir, null, fakeDownloadFile);
+
+    const secondRun = [{ images: [urlB], attachments: [] }];
+    await downloadMedia(secondRun, imagesDir, attachmentsDir, null, fakeDownloadFile);
+
+    assert.deepEqual(downloads, [urlA]);
+    assert.equal(secondRun[0].localImages[0], firstRun[0].localImages[0]);
+    assert.equal(fs.readFileSync(path.join(dir, secondRun[0].localImages[0]), "utf8"), urlA);
+  });
+
+  it("keeps meaningful query parameters distinct", async () => {
+    const dir = tmpDir();
+    const imagesDir = path.join(dir, "images");
+    const attachmentsDir = path.join(dir, "attachments");
+    fs.mkdirSync(imagesDir, { recursive: true });
+    fs.mkdirSync(attachmentsDir, { recursive: true });
+
+    const urlA = "https://cdn.example.com/photo.png?size=100";
+    const urlB = "https://cdn.example.com/photo.png?size=200";
+    const downloads = [];
+    async function fakeDownloadFile(url, dest) {
+      downloads.push(url);
+      fs.writeFileSync(dest, url);
+    }
+
+    const firstRun = [{ images: [urlA], attachments: [] }];
+    await downloadMedia(firstRun, imagesDir, attachmentsDir, null, fakeDownloadFile);
+
+    const secondRun = [{ images: [urlB], attachments: [] }];
+    await downloadMedia(secondRun, imagesDir, attachmentsDir, null, fakeDownloadFile);
+
+    assert.deepEqual(downloads, [urlA, urlB]);
+    assert.notEqual(secondRun[0].localImages[0], firstRun[0].localImages[0]);
+    assert.equal(fs.readFileSync(path.join(dir, secondRun[0].localImages[0]), "utf8"), urlB);
+  });
+
   it("bounds long ASCII media filenames to 255 UTF-8 bytes", async () => {
     const { filename, url } = await generatedImageFilename(`${"a".repeat(300)}.png`);
     const digest = createHash("sha256").update(url).digest("hex");

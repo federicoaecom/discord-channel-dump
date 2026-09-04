@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Stabilized media filename identity: rotating Discord CDN `ex`/`is`/`hm` signatures reuse the same file, while meaningful query parameters keep resources distinct.
+
 ## [2.0.0] - 2026-09-04
 
 ### BREAKING CHANGES
