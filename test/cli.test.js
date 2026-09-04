@@ -8,6 +8,44 @@ const backupArgs = require("../src/cli/backup-args.js");
 const backup = require("../bin/backup.js");
 const regen = require("../bin/regen-html.js");
 
+function runBackupMain(args, options = {}) {
+  const script = `
+    const backup = require("./bin/backup");
+    const config = require("./src/config");
+    const logger = require("./src/ui/logger");
+    let calls = 0;
+    backup.main(${JSON.stringify(args)}, async (...runnerArgs) => {
+      calls++;
+      const [resolvedConfig, cancelToken] = runnerArgs;
+      config.validateConfig(resolvedConfig);
+      cancelToken.throwIfCancelled();
+      console.log(JSON.stringify({
+        calls,
+        argCount: runnerArgs.length,
+        resolvedConfig,
+        tokenUsable: typeof cancelToken.cancel === "function" && !cancelToken.isCancelled(),
+        verbose: logger.isVerbose()
+      }));
+      if (${Boolean(options.rejectRunner)}) throw new Error("injected runner failure");
+    }).then(() => {
+      console.log(JSON.stringify({ outcome: "resolved", verboseAfterMain: logger.isVerbose() }));
+    }).catch((error) => {
+      console.log(JSON.stringify({
+        outcome: "rejected",
+        error: error.message,
+        verboseAfterMain: logger.isVerbose()
+      }));
+    });
+  `;
+
+  return spawnSync(process.execPath, ["-e", script], {
+    encoding: "utf8",
+    timeout: 10000,
+    cwd: path.resolve(__dirname, ".."),
+    env: { ...process.env, P2_2_SECRET_SENTINEL: options.secret },
+  });
+}
+
 describe("CLI exports", () => {
   it("backup.js exports parseCliArgs and applyOverrides", () => {
     assert.equal(typeof backup.parseCliArgs, "function");
@@ -60,6 +98,63 @@ describe("applyOverrides", () => {
     const result = backup.applyOverrides(cfg, { output: "./out", profile: "./prof" });
     assert.equal(result.backupDir, path.resolve("./out"));
     assert.equal(result.profileDir, path.resolve("./prof"));
+  });
+});
+
+describe("backup.js main diagnostics", () => {
+  it("emits safe operational diagnostics and calls the runner once with --verbose", () => {
+    const output = path.resolve("verbose-output");
+    const profile = path.resolve("verbose-profile");
+    const secret = "p2.2-secret-sentinel-7af61e";
+    const result = runBackupMain(
+      ["--verbose", "--dry-run", "--output", output, "--profile", profile],
+      { secret }
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, new RegExp(`Output directory: ${output.replace(/\\/g, "\\\\")}`));
+    assert.match(result.stderr, new RegExp(`Profile directory: ${profile.replace(/\\/g, "\\\\")}`));
+    assert.match(result.stderr, /Dry run: enabled/);
+    assert.doesNotMatch(result.stderr, /token|authorization|cookie|headers|environment/i);
+    assert.equal(result.stdout.includes(secret), false);
+    assert.equal(result.stderr.includes(secret), false);
+
+    const [during, after] = result.stdout.trim().split(/\r?\n/).map(JSON.parse);
+    assert.equal(during.calls, 1);
+    assert.equal(during.argCount, 2);
+    assert.equal(during.tokenUsable, true);
+    assert.equal(during.resolvedConfig.backupDir, output);
+    assert.equal(during.resolvedConfig.profileDir, profile);
+    assert.equal(during.resolvedConfig.dryRun, true);
+    assert.equal(during.verbose, true);
+    assert.equal(after.outcome, "resolved");
+    assert.equal(after.verboseAfterMain, false);
+  });
+
+  it("propagates runner rejection, resets verbose, and reports disabled dry-run", () => {
+    const result = runBackupMain(["--verbose"], { rejectRunner: true });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /Dry run: disabled/);
+    const [during, after] = result.stdout.trim().split(/\r?\n/).map(JSON.parse);
+    assert.equal(during.calls, 1);
+    assert.equal(during.argCount, 2);
+    assert.equal(during.tokenUsable, true);
+    assert.equal(after.outcome, "rejected");
+    assert.equal(after.error, "injected runner failure");
+    assert.equal(after.verboseAfterMain, false);
+  });
+
+  it("suppresses diagnostics without --verbose and still resets logger state", () => {
+    const result = runBackupMain(["--dry-run"]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, "");
+    const [during, after] = result.stdout.trim().split(/\r?\n/).map(JSON.parse);
+    assert.equal(during.calls, 1);
+    assert.equal(during.verbose, false);
+    assert.equal(after.outcome, "resolved");
+    assert.equal(after.verboseAfterMain, false);
   });
 });
 
