@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const pkg = require("../package.json");
 const { runBrowserSession } = require("../src/app.js");
 
 function tmpDir() {
@@ -19,6 +20,7 @@ describe("runBrowserSession", () => {
     const dir = tmpDir();
     const config = { backupDir: dir, profileDir: dir };
     let closed = false;
+    const logged = [];
 
     const deps = {
       launchBrowser: async () => ({
@@ -36,11 +38,21 @@ describe("runBrowserSession", () => {
         close: () => {},
       }),
       saveChannel: async () => {},
+      logger: {
+        info: (message) => logged.push(String(message)),
+        error: () => {},
+        warn: () => {},
+        debug: () => {},
+        write: () => {},
+      },
     };
 
     await runBrowserSession(config, null, deps);
 
     assert.equal(closed, true);
+    assert.ok(
+      logged.some((message) => message.includes(`Discord Channel Dump  v${pkg.version} (API mode)`))
+    );
   });
 
   it("processes a channel when the user presses enter", async () => {

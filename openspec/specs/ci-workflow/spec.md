@@ -1,7 +1,7 @@
 # CI Workflow Specification
 
 ## Purpose
-Define a GitHub Actions workflow that runs lint and tests on Node.js 18+ once the project is pushed to a GitHub repository.
+Define a GitHub Actions workflow that runs lint and tests on the Node.js versions declared in `package.json` once the project is pushed to a GitHub repository.
 
 ## Requirements
 
@@ -17,13 +17,14 @@ The project MUST contain a `.github/workflows/ci.yml` workflow file. The workflo
 
 ### Requirement: Node Version Matrix
 
-The workflow MUST run on Node.js versions matching `engines.node` in `package.json`. At minimum, the workflow MUST run on Node.js 18.
+The workflow MUST run on Node.js versions matching `engines.node` in `package.json`. It MUST exercise the exact Node.js 20.19.0 and 22.13.0 support floors plus a supported Node.js 24 release or channel.
 
 #### Scenario: Job matrix
 
 - GIVEN the CI file defines a test job
 - WHEN the `node-version` matrix is inspected
-- THEN it includes `18.x` and matches the declared engine range
+- THEN it includes `20.19.0`, `22.13.0`, and a supported Node.js 24 release or channel
+- AND every matrix entry matches the declared engine range
 
 ### Requirement: CI Steps
 

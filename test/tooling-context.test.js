@@ -132,7 +132,7 @@ describe("professional layout tooling and documentation", () => {
 
     const ci = read(".github", "workflows", "ci.yml");
     const steps = parseWorkflowSteps(ci);
-    assert.match(ci, /node-version: \[20\.x, 22\.x, 24\.x\]/);
+    assert.match(ci, /node-version: \[20\.19\.0, 22\.13\.0, 24\.x\]/);
     for (const command of [
       "npm ci",
       "npx playwright install chromium",
@@ -146,17 +146,18 @@ describe("professional layout tooling and documentation", () => {
     const smokeStep = findWorkflowStep(steps, "Verify installed package CLI");
     const cleanup = extractShellFunction(smokeStep.run, "cleanup");
 
-    assert.equal(auditStep.condition, "matrix.node-version == '20.x'");
+    assert.equal(auditStep.condition, "matrix.node-version == '20.19.0'");
     assert.equal(auditStep.run.trim(), "npm audit --omit=dev");
-    assert.equal(smokeStep.condition, "matrix.node-version == '20.x'");
+    assert.equal(smokeStep.condition, "matrix.node-version == '20.19.0'");
     assert.equal(smokeStep.shell, "bash");
     assert.match(smokeStep.run, /--ignore-scripts --no-audit --no-fund/);
     assert.match(smokeStep.run, /"\$install_root\/bin\/discord-channel-dump" --help/);
+    assert.match(smokeStep.run, /require\(['"]\.\/package\.json['"]\)\.version/);
     assert.match(smokeStep.run, /(?:^|\n)\s*trap cleanup EXIT\s*(?:\n|$)/);
     assert.ok(cleanup, "package smoke must define cleanup() for its temporary artifacts");
     assert.match(cleanup, /rm -f "\$package_file"/);
     assert.match(cleanup, /rm -rf "\$install_root"/);
-    assert.match(smokeStep.run, /--version\)" = "1\.0\.0"/);
+    assert.match(smokeStep.run, /--version\)" = "\$expected_version"/);
   });
 
   it("documents bin commands and preserved runtime directories", () => {

@@ -9,6 +9,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const pkg = require("../package.json");
 const { ensureDir } = require("./utils/fs");
 const { createPrompt } = require("./ui/prompt");
 const { cyan, yellow, dim } = require("./ui/colors");
@@ -119,7 +120,7 @@ async function runBrowserSession(config, cancelToken, deps = DEFAULT_DEPS) {
   ensureDir(config.profileDir);
 
   depsLogger.info(cyan("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-  depsLogger.info(cyan("  Discord Channel Dump  v3 (API mode)"));
+  depsLogger.info(cyan(`  Discord Channel Dump  v${pkg.version} (API mode)`));
   depsLogger.info(cyan("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
   depsLogger.info(`  ${dim("Profile:")} ${config.profileDir}`);
 
