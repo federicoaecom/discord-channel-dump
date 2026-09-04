@@ -88,13 +88,15 @@ backups/
     messages.json       <- structured messages (JSON)
     index.html          <- Discord-style offline viewer
     images/
-      photo.png
-      screenshot.jpg
+      photo_<sha256>.png
+      screenshot_<sha256>.jpg
     attachments/
-      report.pdf
-      spreadsheet.xlsx
-      video.mp4
+      report_<sha256>.pdf
+      spreadsheet_<sha256>.xlsx
+      video_<sha256>.mp4
 ```
+
+`<sha256>` represents the 64-character lowercase SHA-256 digest of the complete source URL as received. This keeps different source URLs distinct even when they share a filename. Media filenames are limited to 255 UTF-8 bytes by truncating the readable basename when necessary; the extension is retained whenever the hash suffix and extension fit. Source URLs are not canonicalized before hashing.
 
 ### HTML Viewer (`index.html`)
 
@@ -116,8 +118,10 @@ The viewer includes:
   "text": "Message content",
   "images": ["https://cdn.discordapp.com/..."],
   "attachments": [{ "label": "file.pdf", "url": "https://..." }],
-  "localImages": ["images/photo.png"],
-  "localAttachments": [{ "label": "file.pdf", "path": "attachments/file.pdf" }]
+  "localImages": ["images/photo_<sha256>.png"],
+  "localAttachments": [
+    { "label": "file.pdf", "path": "attachments/file_<sha256>.pdf" }
+  ]
 }
 ```
 
