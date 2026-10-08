@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-10-08
+
+### Added
+
+- A "Before you start" guide in README.md and README.es.md: installing Node.js, downloading the latest release (or a release tag, or the development version), and opening a terminal in the project folder.
+- A section at the top of `AGENTS.md` for AI assistants helping someone use the tool: which version to download, which commands the assistant can run, and which interactive steps only the person can do.
+
+### Fixed
+
+- Tests no longer leave temporary directories behind in the operating system temp folder.
+
 ## [2.1.0] - 2026-10-08
 
 ### Upgrade notes
@@ -74,7 +85,8 @@ All notable changes to this project will be documented in this file.
 
 - Project layout moved from flat scripts to `src/` and `bin/`.
 
-[Unreleased]: https://github.com/federicoaecom/discord-channel-dump/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/federicoaecom/discord-channel-dump/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/federicoaecom/discord-channel-dump/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/federicoaecom/discord-channel-dump/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/federicoaecom/discord-channel-dump/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/federicoaecom/discord-channel-dump/releases/tag/v1.0.0
