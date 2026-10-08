@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-08
+
 ### Upgrade notes
 
 - **Existing backups download their media again.** Media filenames changed in 2.0.0 (SHA-256 URL suffixes) and change again in this release: the suffix now comes from a canonical identity that ignores the rotating Discord CDN `ex`/`is`/`hm` parameters. Re-running a backup on an existing channel folder downloads its images and attachments again under the new names.
@@ -72,6 +74,7 @@ All notable changes to this project will be documented in this file.
 
 - Project layout moved from flat scripts to `src/` and `bin/`.
 
-[Unreleased]: https://github.com/federicoaecom/discord-channel-dump/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/federicoaecom/discord-channel-dump/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/federicoaecom/discord-channel-dump/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/federicoaecom/discord-channel-dump/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/federicoaecom/discord-channel-dump/releases/tag/v1.0.0
