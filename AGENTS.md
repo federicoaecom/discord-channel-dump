@@ -2,6 +2,72 @@
 
 This document helps future agents (and humans) get oriented in the `discord-channel-dump` project. Contributor setup, checks, conventions, and the PR workflow live in [CONTRIBUTING.md](CONTRIBUTING.md). User-facing usage lives in [README.md](README.md).
 
+**Helping a person back up their Discord channels?** Read the next section and stop there. Everything after it is for contributors.
+
+## If you are helping someone use this tool
+
+Your goal is to help the person back up their channels. Do not modify the code, open pull requests, or follow the contributor sections below unless the person explicitly asks you to contribute.
+
+### 1. Get the code
+
+Default to the latest stable release. Use `main` only when the person explicitly asks for the development version.
+
+- **Release ZIP (recommended)**: open `https://github.com/federicoaecom/discord-channel-dump/releases/latest` and download **Source code (zip)**. It extracts to a folder like `discord-channel-dump-2.1.0`; Windows "Extract All" can nest it one level deeper.
+- **Git, release tag**: read the newest tag on `https://github.com/federicoaecom/discord-channel-dump/releases` (for example `v2.1.0`), then run `git clone --depth 1 --branch <tag> https://github.com/federicoaecom/discord-channel-dump.git`.
+- **Development version, only on request**: `git clone https://github.com/federicoaecom/discord-channel-dump.git`, or **Code → Download ZIP** on GitHub.
+
+Work from the folder that contains `package.json`. The person-facing steps for Node.js, download, and terminal are in [README: Before you start](README.md#before-you-start).
+
+### 2. Commands you can run (or tell the person to run)
+
+| Command | Purpose |
+| --- | --- |
+| `node --version` | Must satisfy `^20.19.0`, `^22.13.0`, or `>=24` (`engines` in `package.json`). |
+| `npm install` | Installs dependencies. |
+| `npx playwright install chromium` | Downloads the Chromium browser. It can take several minutes. |
+| `node bin/backup.js --help` | Confirms the tool runs. Prints the options and exits. |
+
+### 3. Steps only the person can do
+
+`node bin/backup.js` is interactive: it opens a visible browser window and waits for keyboard input. Do not run it in your own shell, where it would just hang. Tell the person to run it in their own terminal, then:
+
+1. Log in to Discord in the browser window. This is needed only on the first run; the session is saved.
+2. Open the channel to back up.
+3. Return to the terminal and press **ENTER**.
+4. Press **ENTER** to confirm the detected channel name, or type another name.
+5. Repeat steps 2 to 4 for more channels. Type `salir` or `exit` to finish.
+
+Details: [README: Per-channel flow](README.md#per-channel-flow).
+
+### Language
+
+The interface is Spanish by default. For English, add `--lang en` or set `DISCORD_LANG=en` (in PowerShell: `$env:DISCORD_LANG = "en"`). See [README: Language](README.md#language).
+
+### Result
+
+Each channel is saved to `backups/<channel-name>/` (or under `--output <dir>`):
+
+- `index.html`: offline viewer. Tell the person to open it in their browser.
+- `messages.json`: every message, oldest first.
+- `images/` and `attachments/`: downloaded media.
+
+See [README: Output layout](README.md#output-layout).
+
+### Safety rules
+
+Respect these, and tell the person about the last two:
+
+- Never ask for, print, or share the person's Discord password or token. They log in only in the browser window.
+- Never read, print, copy, or share the contents of `browser-profile/`. It holds a live, logged-in Discord session and must be treated like a password. See [README: Security & Privacy](README.md#security--privacy).
+- Backups contain private messages and attachments. Store and share them with the same care as the original conversations.
+- Automating a user account may violate [Discord's Terms of Service](https://discord.com/terms); the person uses the tool at their own risk and should back up only content they have the right to keep. See [README: Disclaimer](README.md#disclaimer).
+
+### Troubleshooting
+
+Match the terminal message against [README: Troubleshooting](README.md#troubleshooting).
+
+---
+
 ## Project
 
 - **Name**: `discord-channel-dump`
