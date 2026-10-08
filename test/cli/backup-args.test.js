@@ -87,6 +87,25 @@ describe("backup-args", () => {
       const profile = parseCliArgs(["-p"]);
       assert.equal(profile.error, "Missing value for -p");
     });
+
+    it("parses --lang with a value", () => {
+      assert.deepEqual(parseCliArgs(["--lang", "en"]), {
+        help: false,
+        version: false,
+        verbose: false,
+        dryRun: false,
+        lang: "en",
+      });
+    });
+
+    it("returns an error when --lang has no value", () => {
+      assert.equal(parseCliArgs(["--lang"]).error, "Missing value for --lang");
+    });
+
+    it("passes an invalid --lang value through for resolveLanguage to reject", () => {
+      // Validation lives in src/i18n resolveLanguage so flag and env share one rule.
+      assert.equal(parseCliArgs(["--lang", "xx"]).lang, "xx");
+    });
   });
 
   describe("printHelp", () => {
@@ -100,6 +119,7 @@ describe("backup-args", () => {
         printHelp();
         assert.match(captured, /Usage:/);
         assert.match(captured, /--help/);
+        assert.match(captured, /--lang <code>/);
       } finally {
         console.log = original;
       }

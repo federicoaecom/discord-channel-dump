@@ -11,6 +11,7 @@
 const path = require("path");
 const config = require("../src/config");
 const logger = require("../src/ui/logger");
+const { resolveLanguage, setLanguage } = require("../src/i18n");
 const { createCancelToken } = require("../src/cancel-token");
 const { parseCliArgs, printHelp, printVersion } = require("../src/cli/backup-args");
 const { runBrowserSession } = require("../src/app");
@@ -35,6 +36,15 @@ function handleFatalError(error) {
 
 async function main(argv, runSession = runBrowserSession) {
   const args = parseCliArgs(argv);
+  // Resolve the language before anything is printed so help and errors can use it.
+  const lang = resolveLanguage({ flag: args.lang, env: process.env.DISCORD_LANG });
+  if (lang.error) {
+    logger.error(`Error: ${lang.error}`);
+    printHelp();
+    process.exit(1);
+  }
+  setLanguage(lang.language);
+
   if (args.error) {
     logger.error(`Error: ${args.error}`);
     printHelp();
@@ -52,7 +62,10 @@ async function main(argv, runSession = runBrowserSession) {
   logger.setVerbose(args.verbose);
 
   try {
-    const cfg = applyOverrides(config.loadConfig({ dryRun: args.dryRun }), args);
+    const cfg = applyOverrides(
+      config.loadConfig({ dryRun: args.dryRun, language: lang.language }),
+      args
+    );
 
     try {
       config.validateConfig(cfg);

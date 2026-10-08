@@ -8,6 +8,18 @@ const backupArgs = require("../src/cli/backup-args.js");
 const backup = require("../bin/backup.js");
 const regen = require("../bin/regen-html.js");
 
+/**
+ * Build a child-process environment that ignores any DISCORD_LANG set in the
+ * developer's shell, optionally adding explicit overrides.
+ */
+function childEnv(extra = {}) {
+  const env = { ...process.env, ...extra };
+  if (!Object.prototype.hasOwnProperty.call(extra, "DISCORD_LANG")) {
+    delete env.DISCORD_LANG;
+  }
+  return env;
+}
+
 function runBackupMain(args, options = {}) {
   const script = `
     const backup = require("./bin/backup");
@@ -42,7 +54,7 @@ function runBackupMain(args, options = {}) {
     encoding: "utf8",
     timeout: 10000,
     cwd: path.resolve(__dirname, ".."),
-    env: { ...process.env, P2_2_SECRET_SENTINEL: options.secret },
+    env: childEnv({ P2_2_SECRET_SENTINEL: options.secret, ...options.env }),
   });
 }
 
@@ -90,6 +102,20 @@ describe("regen-html.js parseCliArgs", () => {
   it("returns an error for an unknown option", () => {
     const args = regen.parseCliArgs(["--foo"]);
     assert.equal(args.error, "Unknown option: --foo");
+  });
+
+  it("parses --lang with a value", () => {
+    const args = regen.parseCliArgs(["--lang", "en", "backups/channel"]);
+    assert.deepEqual(args, {
+      help: false,
+      version: false,
+      lang: "en",
+      _: ["backups/channel"],
+    });
+  });
+
+  it("returns an error when --lang has no value", () => {
+    assert.equal(regen.parseCliArgs(["--lang"]).error, "Missing value for --lang");
   });
 });
 
@@ -174,6 +200,7 @@ describe("backup.js main diagnostics", () => {
     assert.equal(during.resolvedConfig.backupDir, output);
     assert.equal(during.resolvedConfig.profileDir, profile);
     assert.equal(during.resolvedConfig.dryRun, true);
+    assert.equal(during.resolvedConfig.language, "es");
     assert.equal(during.verbose, true);
     assert.equal(after.outcome, "resolved");
     assert.equal(after.verboseAfterMain, false);
@@ -206,6 +233,29 @@ describe("backup.js main diagnostics", () => {
   });
 });
 
+describe("backup.js main language", () => {
+  it("passes the --lang value into the config", () => {
+    const result = runBackupMain(["--dry-run", "--lang", "en"]);
+    assert.equal(result.status, 0, result.stderr);
+    const [during] = result.stdout.trim().split(/\r?\n/).map(JSON.parse);
+    assert.equal(during.resolvedConfig.language, "en");
+  });
+
+  it("passes the DISCORD_LANG value into the config when no flag is given", () => {
+    const result = runBackupMain(["--dry-run"], { env: { DISCORD_LANG: "en" } });
+    assert.equal(result.status, 0, result.stderr);
+    const [during] = result.stdout.trim().split(/\r?\n/).map(JSON.parse);
+    assert.equal(during.resolvedConfig.language, "en");
+  });
+
+  it("lets --lang win over DISCORD_LANG", () => {
+    const result = runBackupMain(["--dry-run", "--lang", "es"], { env: { DISCORD_LANG: "en" } });
+    assert.equal(result.status, 0, result.stderr);
+    const [during] = result.stdout.trim().split(/\r?\n/).map(JSON.parse);
+    assert.equal(during.resolvedConfig.language, "es");
+  });
+});
+
 describe("CLI smoke tests", () => {
   const backupPath = path.resolve(__dirname, "..", "bin", "backup.js");
   const regenPath = path.resolve(__dirname, "..", "bin", "regen-html.js");
@@ -214,6 +264,7 @@ describe("CLI smoke tests", () => {
     const result = spawnSync(process.execPath, [backupPath, "--help"], {
       encoding: "utf8",
       timeout: 10000,
+      env: childEnv(),
     });
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Usage:/);
@@ -223,6 +274,7 @@ describe("CLI smoke tests", () => {
     const result = spawnSync(process.execPath, [backupPath, "--version"], {
       encoding: "utf8",
       timeout: 10000,
+      env: childEnv(),
     });
     assert.equal(result.status, 0);
     assert.equal(result.stdout.trim(), pkg.version);
@@ -232,6 +284,7 @@ describe("CLI smoke tests", () => {
     const result = spawnSync(process.execPath, [regenPath, "--help"], {
       encoding: "utf8",
       timeout: 10000,
+      env: childEnv(),
     });
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Usage:/);
@@ -241,10 +294,67 @@ describe("CLI smoke tests", () => {
     const result = spawnSync(process.execPath, [regenPath, "--version"], {
       encoding: "utf8",
       timeout: 10000,
+      env: childEnv(),
     });
     assert.equal(result.status, 0);
     assert.equal(result.stdout.trim(), pkg.version);
   });
+
+  it("backup.js --help lists --lang", () => {
+    const result = spawnSync(process.execPath, [backupPath, "--help"], {
+      encoding: "utf8",
+      timeout: 10000,
+      env: childEnv(),
+    });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /--lang <code>/);
+  });
+
+  it("regen-html.js --help lists --lang", () => {
+    const result = spawnSync(process.execPath, [regenPath, "--help"], {
+      encoding: "utf8",
+      timeout: 10000,
+      env: childEnv(),
+    });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /--lang <code>/);
+  });
+
+  for (const [name, scriptPath] of [
+    ["backup.js", backupPath],
+    ["regen-html.js", regenPath],
+  ]) {
+    it(`${name} rejects an invalid --lang value and exits 1`, () => {
+      const result = spawnSync(process.execPath, [scriptPath, "--lang", "xx"], {
+        encoding: "utf8",
+        timeout: 10000,
+        env: childEnv(),
+      });
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /Error: Invalid value for --lang: "xx"/);
+      assert.match(result.stderr, /Supported values: es, en/);
+    });
+
+    it(`${name} rejects an invalid DISCORD_LANG value and exits 1`, () => {
+      const result = spawnSync(process.execPath, [scriptPath, "--help"], {
+        encoding: "utf8",
+        timeout: 10000,
+        env: childEnv({ DISCORD_LANG: "xx" }),
+      });
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /Error: Invalid value for DISCORD_LANG: "xx"/);
+    });
+
+    it(`${name} lets a valid --lang win over an invalid DISCORD_LANG`, () => {
+      const result = spawnSync(process.execPath, [scriptPath, "--lang", "en", "--help"], {
+        encoding: "utf8",
+        timeout: 10000,
+        env: childEnv({ DISCORD_LANG: "xx" }),
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /Usage:/);
+    });
+  }
 
   it("backup.js prints a friendly config error and exits 1", () => {
     const script = `
@@ -270,6 +380,7 @@ describe("CLI smoke tests", () => {
       encoding: "utf8",
       timeout: 10000,
       cwd: path.resolve(__dirname, ".."),
+      env: childEnv(),
     });
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Error: backupDir must be a non-empty string/);

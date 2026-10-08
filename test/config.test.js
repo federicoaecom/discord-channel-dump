@@ -1,6 +1,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 const config = require("../src/config.js");
 const { validateConfig, ConfigError, loadConfig } = config;
 
@@ -16,6 +17,7 @@ function makeCfg(overrides = {}) {
     retryDelayMs: 1000,
     jitterMaxMs: 500,
     dryRun: false,
+    language: "es",
     ...overrides,
   };
 }
@@ -157,5 +159,43 @@ describe("validateConfig", () => {
 
   it("rejects a non-boolean dryRun", () => {
     assert.throws(() => validateConfig(makeCfg({ dryRun: "yes" })), /dryRun must be a boolean/);
+  });
+
+  it("accepts both supported languages", () => {
+    assert.doesNotThrow(() => validateConfig(makeCfg({ language: "es" })));
+    assert.doesNotThrow(() => validateConfig(makeCfg({ language: "en" })));
+  });
+
+  it("rejects an unsupported or missing language", () => {
+    for (const language of ["fr", "EN", "es-AR", "", undefined]) {
+      assert.throws(
+        () => validateConfig(makeCfg({ language })),
+        (error) =>
+          error instanceof ConfigError && /language must be one of: es, en/.test(error.message)
+      );
+    }
+  });
+});
+
+describe("language default", () => {
+  it("defaults to Spanish without reading DISCORD_LANG", () => {
+    assert.equal(config.defaults.language, "es");
+    assert.equal(loadConfig().language, "es");
+    assert.equal(loadConfig({ language: "en" }).language, "en");
+  });
+
+  it("ignores DISCORD_LANG so resolveLanguage stays the single resolution point", () => {
+    const result = spawnSync(
+      process.execPath,
+      ["-e", 'console.log(require("./src/config").defaults.language)'],
+      {
+        encoding: "utf8",
+        timeout: 10000,
+        cwd: path.resolve(__dirname, ".."),
+        env: { ...process.env, DISCORD_LANG: "en" },
+      }
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), "es");
   });
 });

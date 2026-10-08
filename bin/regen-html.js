@@ -6,8 +6,9 @@
  *   node bin/regen-html.js [options] <path-to-backup-folder>
  *
  * Options:
- *   -h, --help      Show this help message
- *   -v, --version   Show version
+ *   -h, --help        Show this help message
+ *   -v, --version     Show version
+ *       --lang <code> Interface language: es (default) or en
  *
  * Examples:
  *   node bin/regen-html.js backups/channel-name
@@ -20,6 +21,7 @@ const fs = require("fs");
 const path = require("path");
 const pkg = require("../package.json");
 const logger = require("../src/ui/logger");
+const { resolveLanguage, setLanguage } = require("../src/i18n");
 const { generateHtml } = require("../src/viewer/render");
 
 function printHelp() {
@@ -27,11 +29,14 @@ function printHelp() {
 Usage: node bin/regen-html.js [options] <backup-folder>
 
 Options:
-  -h, --help      Show this help message
-  -v, --version   Show version
+  -h, --help        Show this help message
+  -v, --version     Show version
+      --lang <code> Interface language: es (default) or en
+                    (overrides the DISCORD_LANG env var)
 
 Examples:
   node bin/regen-html.js backups/channel-name
+  node bin/regen-html.js --lang en backups/channel-name
   node bin/regen-html.js --help
 `);
 }
@@ -40,6 +45,13 @@ function printVersion() {
   logger.info(pkg.version);
 }
 
+/**
+ * Parse command-line arguments for bin/regen-html.js.
+ * @param {string[]} argv - Raw CLI arguments (excluding node and script path).
+ * @returns {{ help: boolean, version: boolean, lang?: string, _: string[] } | { error: string }}
+ *   Parsed options or an error object. `lang` is the raw `--lang` value; it is
+ *   validated by `resolveLanguage` in src/i18n.
+ */
 function parseCliArgs(argv) {
   const result = { help: false, version: false, _: [] };
   let i = 0;
@@ -49,6 +61,11 @@ function parseCliArgs(argv) {
       result.help = true;
     } else if (arg === "--version" || arg === "-v") {
       result.version = true;
+    } else if (arg === "--lang") {
+      if (i + 1 >= argv.length) {
+        return { error: `Missing value for ${arg}` };
+      }
+      result.lang = argv[++i];
     } else if (arg.startsWith("-")) {
       return { error: `Unknown option: ${arg}` };
     } else {
@@ -61,6 +78,15 @@ function parseCliArgs(argv) {
 
 async function main(argv) {
   const args = parseCliArgs(argv);
+  // Resolve the language before anything is printed. The viewer will use it in S5.
+  const lang = resolveLanguage({ flag: args.lang, env: process.env.DISCORD_LANG });
+  if (lang.error) {
+    logger.error(`Error: ${lang.error}`);
+    printHelp();
+    process.exit(1);
+  }
+  setLanguage(lang.language);
+
   if (args.error) {
     logger.error(`Error: ${args.error}`);
     printHelp();
