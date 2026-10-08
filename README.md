@@ -6,9 +6,50 @@ Back up Discord text channels to your disk: every message as JSON, every image a
 
 ---
 
+## Before you start
+
+You need Node.js, a copy of this project, and a terminal open in its folder. Skip any step you have already done. If an AI assistant is helping you, ask it to read [AGENTS.md](AGENTS.md#if-you-are-helping-someone-use-this-tool) first.
+
+### 1. Install Node.js
+
+Install the current **LTS** version from [nodejs.org](https://nodejs.org/). The tool needs Node.js `^20.19.0`, `^22.13.0`, or `>=24`. Alternatives:
+
+| System | Command |
+| --- | --- |
+| Windows | `winget install OpenJS.NodeJS.LTS` |
+| macOS (Homebrew) | `brew install node` |
+
+Open a new terminal and run `node --version`. It must print a version in the range above, for example `v24.x.x`.
+
+### 2. Get the code
+
+| Option | Best for | How |
+| --- | --- | --- |
+| **A. Latest release ZIP** (recommended) | Most people | Open the [latest release](https://github.com/federicoaecom/discord-channel-dump/releases/latest), download **Source code (zip)**, and extract it. The folder is named like `discord-channel-dump-2.1.0`. |
+| **B. Git clone of a release** | People who use Git | Run the command below, replacing `v2.1.0` with the newest tag on the [releases page](https://github.com/federicoaecom/discord-channel-dump/releases). |
+| **C. Development version** | Testing unreleased changes | `git clone` the repository without `--branch`, or use **Code → Download ZIP** on GitHub. This is the `main` branch and may contain unfinished work. |
+
+```bash
+git clone --depth 1 --branch v2.1.0 https://github.com/federicoaecom/discord-channel-dump.git
+```
+
+### 3. Open a terminal in the project folder
+
+The project folder is the one that contains `package.json` and the `bin` folder. Extracting a ZIP can create a folder inside another folder with the same name; use the inner one.
+
+| System | How |
+| --- | --- |
+| Windows | In File Explorer, open the folder, right-click an empty area, and choose **Open in Terminal** (Windows 10: hold Shift and choose **Open PowerShell window here**). Or, in PowerShell, run `cd "<path to the folder>"`. |
+| macOS | Open **Terminal**, type `cd ` (with a trailing space), drag the folder onto the window, and press **Return**. |
+| Linux | Use your file manager's **Open in Terminal** option, or run `cd <path to the folder>`. |
+
+Run `ls` to check: you should see `package.json` in the list.
+
+---
+
 ## Quick start
 
-Requires Node.js `^20.19.0`, `^22.13.0`, or `>=24`.
+In the terminal from [Before you start](#before-you-start), run:
 
 ```bash
 npm install
@@ -16,7 +57,7 @@ npx playwright install chromium
 node bin/backup.js --lang en
 ```
 
-A browser window opens. Log in to Discord, open the channel you want, return to the terminal, and press **ENTER**. The backup lands in `backups/<channel-name>/`. Drop `--lang en` to use the default Spanish interface.
+The second command downloads the Chromium browser and can take a few minutes. The third one opens a browser window. Log in to Discord, open the channel you want, return to the terminal, and press **ENTER**. The backup lands in `backups/<channel-name>/`. Drop `--lang en` to use the default Spanish interface.
 
 ---
 
@@ -118,7 +159,7 @@ The interface is in **Spanish by default**. To switch to English:
 | How                       | Example                                |
 | ------------------------- | -------------------------------------- |
 | Flag (highest priority)   | `node bin/backup.js --lang en`         |
-| Environment variable      | `DISCORD_LANG=en node bin/backup.js`   |
+| Environment variable      | `DISCORD_LANG=en node bin/backup.js` (macOS/Linux) or `$env:DISCORD_LANG = "en"; node bin/backup.js` (PowerShell) |
 | Nothing set               | Spanish (`es`)                         |
 
 An invalid `--lang` value is an error: the tool prints the supported values and exits with code 1. The message uses `DISCORD_LANG` when it is valid, otherwise Spanish:

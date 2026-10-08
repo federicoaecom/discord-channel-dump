@@ -8,9 +8,50 @@ Copias de seguridad de canales de texto de Discord en el disco: todos los mensaj
 
 ---
 
+## Antes de empezar
+
+Necesita Node.js, una copia de este proyecto y una terminal abierta en su carpeta. Omita los pasos que ya haya hecho. Si un asistente de IA le está ayudando, pídale que lea primero [AGENTS.md](AGENTS.md#if-you-are-helping-someone-use-this-tool) (en inglés).
+
+### 1. Instalar Node.js
+
+Instale la versión **LTS** actual desde [nodejs.org](https://nodejs.org/). La herramienta requiere Node.js `^20.19.0`, `^22.13.0` o `>=24`. Alternativas:
+
+| Sistema | Comando |
+| --- | --- |
+| Windows | `winget install OpenJS.NodeJS.LTS` |
+| macOS (Homebrew) | `brew install node` |
+
+Abra una terminal nueva y ejecute `node --version`. Debe mostrar una versión dentro del rango anterior, por ejemplo `v24.x.x`.
+
+### 2. Obtener el código
+
+| Opción | Recomendada para | Cómo |
+| --- | --- | --- |
+| **A. ZIP de la última versión publicada** (recomendada) | La mayoría de las personas | Abra la [última versión publicada](https://github.com/federicoaecom/discord-channel-dump/releases/latest), descargue **Source code (zip)** y extráigalo. La carpeta se llama, por ejemplo, `discord-channel-dump-2.1.0`. |
+| **B. Clonar una versión publicada con Git** | Quienes usan Git | Ejecute el siguiente comando y reemplace `v2.1.0` por la etiqueta más reciente de la [página de versiones](https://github.com/federicoaecom/discord-channel-dump/releases). |
+| **C. Versión de desarrollo** | Probar cambios aún no publicados | Ejecute `git clone` del repositorio sin `--branch`, o use **Code → Download ZIP** en GitHub. Corresponde a la rama `main` y puede incluir trabajo sin terminar. |
+
+```bash
+git clone --depth 1 --branch v2.1.0 https://github.com/federicoaecom/discord-channel-dump.git
+```
+
+### 3. Abrir una terminal en la carpeta del proyecto
+
+La carpeta del proyecto es la que contiene `package.json` y la carpeta `bin`. Al extraer un ZIP se puede crear una carpeta dentro de otra con el mismo nombre; use la interior.
+
+| Sistema | Cómo |
+| --- | --- |
+| Windows | En el Explorador de archivos, abra la carpeta, haga clic derecho en un área vacía y elija **Abrir en Terminal** (Windows 10: mantenga Mayús y elija **Abrir la ventana de PowerShell aquí**). O bien, en PowerShell, ejecute `cd "<ruta de la carpeta>"`. |
+| macOS | Abra **Terminal**, escriba `cd ` (con un espacio al final), arrastre la carpeta a la ventana y presione **Return**. |
+| Linux | Use la opción **Abrir en una terminal** del administrador de archivos, o ejecute `cd <ruta de la carpeta>`. |
+
+Ejecute `ls` para comprobarlo: debe aparecer `package.json` en la lista.
+
+---
+
 ## Inicio rápido
 
-Requiere Node.js `^20.19.0`, `^22.13.0` o `>=24`.
+En la terminal de [Antes de empezar](#antes-de-empezar), ejecute:
 
 ```bash
 npm install
@@ -18,7 +59,7 @@ npx playwright install chromium
 node bin/backup.js
 ```
 
-Se abre una ventana del navegador. Inicie sesión en Discord, abra el canal que desea respaldar, vuelva a la terminal y presione **ENTER**. La copia de seguridad se guarda en `backups/<nombre-del-canal>/`. Agregue `--lang en` para usar la interfaz en inglés.
+El segundo comando descarga el navegador Chromium y puede tardar unos minutos. El tercero abre una ventana del navegador. Inicie sesión en Discord, abra el canal que desea respaldar, vuelva a la terminal y presione **ENTER**. La copia de seguridad se guarda en `backups/<nombre-del-canal>/`. Agregue `--lang en` para usar la interfaz en inglés.
 
 ---
 
@@ -120,7 +161,7 @@ La interfaz está en **español de forma predeterminada**. Para cambiarla a ingl
 | Cómo | Ejemplo |
 | --- | --- |
 | Opción (máxima prioridad) | `node bin/backup.js --lang en` |
-| Variable de entorno | `DISCORD_LANG=en node bin/backup.js` |
+| Variable de entorno | `DISCORD_LANG=en node bin/backup.js` (macOS/Linux) o `$env:DISCORD_LANG = "en"; node bin/backup.js` (PowerShell) |
 | Sin configurar | Español (`es`) |
 
 Un valor no válido en `--lang` es un error: la herramienta muestra los valores admitidos y termina con código 1. El mensaje usa el idioma de `DISCORD_LANG` si es válido y, si no, el español:
