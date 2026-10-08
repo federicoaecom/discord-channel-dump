@@ -58,29 +58,21 @@ describe("saveChannel", () => {
     const messages = [{ images: [url], attachments: [] }];
     let filename;
 
-    try {
-      await downloadMedia(messages, imagesDir, attachmentsDir, null, async (_url, dest) => {
-        filename = path.basename(dest);
-      });
-      return { filename, url };
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    await downloadMedia(messages, imagesDir, attachmentsDir, null, async (_url, dest) => {
+      filename = path.basename(dest);
+    });
+    return { filename, url };
   }
 
   async function assertRejectedWithoutWrites(channelName, expectedError) {
     const parentDir = tmpDir();
     const backupDir = path.join(parentDir, "backups");
 
-    try {
-      await assert.rejects(
-        saveChannel(channelName, [], { backupDir }, null, fakeDownloadMedia),
-        expectedError
-      );
-      assert.deepEqual(fs.readdirSync(parentDir), []);
-    } finally {
-      fs.rmSync(parentDir, { recursive: true, force: true });
-    }
+    await assert.rejects(
+      saveChannel(channelName, [], { backupDir }, null, fakeDownloadMedia),
+      expectedError
+    );
+    assert.deepEqual(fs.readdirSync(parentDir), []);
   }
 
   // eslint-disable-next-line no-unused-vars
@@ -130,18 +122,14 @@ describe("saveChannel", () => {
 
   it("writes index.html in the active language (English)", async () => {
     const dir = tmpDir();
-    try {
-      const messages = [{ msgId: "1", timestamp: "2024-01-01T12:00:00.000Z", text: "hi" }];
-      await captureStdout(() =>
-        saveChannel("viewer-en", messages, { backupDir: dir }, null, fakeDownloadMedia)
-      );
-      const html = fs.readFileSync(path.join(dir, "viewer-en", "index.html"), "utf8");
-      assert.match(html, /<html lang="en">/);
-      assert.match(html, /placeholder="Search the chat…"/);
-      assert.match(html, /<span class="header-meta">1 message &mdash; /);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    const messages = [{ msgId: "1", timestamp: "2024-01-01T12:00:00.000Z", text: "hi" }];
+    await captureStdout(() =>
+      saveChannel("viewer-en", messages, { backupDir: dir }, null, fakeDownloadMedia)
+    );
+    const html = fs.readFileSync(path.join(dir, "viewer-en", "index.html"), "utf8");
+    assert.match(html, /<html lang="en">/);
+    assert.match(html, /placeholder="Search the chat…"/);
+    assert.match(html, /<span class="header-meta">1 message &mdash; /);
   });
 
   it("sanitizes the channel name for the directory", async () => {
@@ -480,16 +468,12 @@ describe("saveChannel", () => {
     const cancelError = new Error("Descarga cancelada");
     cancelError.name = "CancelError";
 
-    try {
-      await assert.rejects(
-        downloadMedia(messages, imagesDir, attachmentsDir, null, async () => {
-          throw cancelError;
-        }),
-        (error) => error === cancelError
-      );
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    await assert.rejects(
+      downloadMedia(messages, imagesDir, attachmentsDir, null, async () => {
+        throw cancelError;
+      }),
+      (error) => error === cancelError
+    );
   });
 
   it("skips a generic download error even when its message mentions cancellation", async () => {
@@ -511,7 +495,6 @@ describe("saveChannel", () => {
       });
     } finally {
       process.stdout.write = originalWrite;
-      fs.rmSync(dir, { recursive: true, force: true });
     }
 
     assert.match(chunks.join(""), /\[skip img\]/);
@@ -528,20 +511,16 @@ describe("writer output in the default language (Spanish)", () => {
         attachments: [{ label: "doc.pdf", url: "https://cdn.example.com/doc.pdf" }],
       },
     ];
-    try {
-      const { output } = await captureStdout(() =>
-        downloadMedia(
-          messages,
-          path.join(dir, "images"),
-          path.join(dir, "attachments"),
-          null,
-          downloadFileFn
-        )
-      );
-      return output;
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    const { output } = await captureStdout(() =>
+      downloadMedia(
+        messages,
+        path.join(dir, "images"),
+        path.join(dir, "attachments"),
+        null,
+        downloadFileFn
+      )
+    );
+    return output;
   }
 
   it("prints Spanish progress lines and per-type summaries", async () => {
@@ -571,32 +550,24 @@ describe("writer output in the default language (Spanish)", () => {
 
   it("writes index.html in Spanish", async () => {
     const dir = tmpDir();
-    try {
-      const messages = [{ msgId: "1", timestamp: "2024-01-01T12:00:00.000Z", text: "hola" }];
-      await captureStdout(() =>
-        saveChannel("visor-es", messages, { backupDir: dir }, null, async () => {})
-      );
-      const html = fs.readFileSync(path.join(dir, "visor-es", "index.html"), "utf8");
-      assert.match(html, /<html lang="es">/);
-      assert.match(html, /placeholder="Buscar en el chat…"/);
-      assert.match(html, /<span class="header-meta">1 mensaje &mdash; /);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    const messages = [{ msgId: "1", timestamp: "2024-01-01T12:00:00.000Z", text: "hola" }];
+    await captureStdout(() =>
+      saveChannel("visor-es", messages, { backupDir: dir }, null, async () => {})
+    );
+    const html = fs.readFileSync(path.join(dir, "visor-es", "index.html"), "utf8");
+    assert.match(html, /<html lang="es">/);
+    assert.match(html, /placeholder="Buscar en el chat…"/);
+    assert.match(html, /<span class="header-meta">1 mensaje &mdash; /);
   });
 
   it("prints the folder, saved summary, and output lines in Spanish", async () => {
     const dir = tmpDir();
-    try {
-      const { output, result } = await captureStdout(() =>
-        saveChannel("canal", [{ msgId: "1" }], { backupDir: dir }, null, async () => {})
-      );
-      assert.ok(output.includes(`  Carpeta: ${result.channelDir}\n`), output);
-      assert.ok(output.includes("\n  Se guardó 1 mensaje | Imágenes: 0 | Adjuntos: 0\n"), output);
-      assert.ok(output.includes(`  Salida: ${result.channelDir}\n`), output);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    const { output, result } = await captureStdout(() =>
+      saveChannel("canal", [{ msgId: "1" }], { backupDir: dir }, null, async () => {})
+    );
+    assert.ok(output.includes(`  Carpeta: ${result.channelDir}\n`), output);
+    assert.ok(output.includes("\n  Se guardó 1 mensaje | Imágenes: 0 | Adjuntos: 0\n"), output);
+    assert.ok(output.includes(`  Salida: ${result.channelDir}\n`), output);
   });
 
   it("uses the plural in the Spanish saved summary for several messages", async () => {
@@ -616,14 +587,10 @@ describe("writer output in the default language (Spanish)", () => {
   ]) {
     it(`rejects ${JSON.stringify(channelName)} with a Spanish error`, async () => {
       const dir = tmpDir();
-      try {
-        await assert.rejects(
-          saveChannel(channelName, [], { backupDir: dir }, null, async () => {}),
-          (error) => error.message === expected
-        );
-      } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-      }
+      await assert.rejects(
+        saveChannel(channelName, [], { backupDir: dir }, null, async () => {}),
+        (error) => error.message === expected
+      );
     });
   }
 });
