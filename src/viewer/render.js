@@ -97,13 +97,12 @@ function generateHtml(channelName, messages, options = {}) {
     .join("\n");
 
   const count = messages.length;
-  const countKey = count === 1 ? "viewer.messageCount.one" : "viewer.messageCount.other";
 
   return fillTemplate(template, {
     LANG: escapeHtml(lang),
     TITLE: text("viewer.title", { channel: channelName }),
     CHANNEL_NAME: escapeHtml(channelName),
-    MESSAGE_COUNT_LABEL: text(countKey, { count }),
+    MESSAGE_COUNT_LABEL: text(i18n.pluralKey("viewer.messageCount", count), { count }),
     GENERATED_AT: escapeHtml(new Date().toLocaleString(locale)),
     SEARCH_PLACEHOLDER: text("viewer.searchPlaceholder"),
     DATE_FROM_LABEL: text("viewer.dateFrom"),

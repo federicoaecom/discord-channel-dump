@@ -14,7 +14,7 @@ const { ensureDir } = require("./utils/fs");
 const { createPrompt, isPromptClosedError } = require("./ui/prompt");
 const { cyan, yellow, dim } = require("./ui/colors");
 const logger = require("./ui/logger");
-const { t, translationsOf } = require("./i18n");
+const { t, tPlural, translationsOf } = require("./i18n");
 const { launchBrowser, getChannelId, getChannelNameFromDom } = require("./browser/session");
 const { getChannelName, fetchAllMessages } = require("./api/discord");
 const { normalizeMessage } = require("./messages/normalize");
@@ -168,7 +168,7 @@ async function runBrowserSession(config, cancelToken, deps = DEFAULT_DEPS) {
       const raw = await fetchAllMessages(context.request, token, channelId, config);
 
       if (config.dryRun) {
-        depsLogger.info(yellow(`  ${t("app.dryRunSummary", { count: raw.length })}`));
+        depsLogger.info(yellow(`  ${tPlural("app.dryRunSummary", raw.length)}`));
         continue;
       }
 

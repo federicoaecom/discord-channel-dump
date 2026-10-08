@@ -16,6 +16,8 @@ const {
   translate,
   translateIn,
   translationsOf,
+  pluralKey,
+  tPlural,
   t,
 } = i18n;
 
@@ -209,6 +211,33 @@ describe("translationsOf", () => {
   });
 });
 
+describe("pluralKey", () => {
+  it("selects the .one form only for exactly 1", () => {
+    assert.equal(pluralKey("viewer.messageCount", 1), "viewer.messageCount.one");
+    for (const count of [0, 2, 21, 1000000, 1.5, -1]) {
+      assert.equal(pluralKey("viewer.messageCount", count), "viewer.messageCount.other", count);
+    }
+  });
+});
+
+describe("tPlural", () => {
+  it("translates the plural form in the active language and fills {count}", () => {
+    assert.equal(tPlural("viewer.messageCount", 1), "1 mensaje");
+    assert.equal(tPlural("viewer.messageCount", 1000000), "1000000 mensajes");
+    setLanguage("en");
+    assert.equal(tPlural("viewer.messageCount", 1), "1 message");
+    assert.equal(tPlural("viewer.messageCount", 0), "0 messages");
+  });
+
+  it("passes the other params through, letting count win", () => {
+    setLanguage("en");
+    assert.equal(
+      tPlural("cli.regen.done", 2, { path: "out/index.html", count: 99 }),
+      "Done: out/index.html  (2 messages)"
+    );
+  });
+});
+
 describe("dictionaries", () => {
   it("es and en have identical key sets", () => {
     assert.deepEqual(Object.keys(es).sort(), Object.keys(en).sort());
@@ -218,6 +247,19 @@ describe("dictionaries", () => {
     const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
     for (const key of Object.keys(en)) {
       assert.deepEqual(placeholders(es[key]), placeholders(en[key]), key);
+    }
+  });
+
+  it("define every plural key in both .one and .other forms", () => {
+    const pluralBases = (dict) =>
+      Object.keys(dict)
+        .filter((key) => /\.(one|other)$/.test(key))
+        .map((key) => key.replace(/\.(one|other)$/, ""));
+    for (const dict of [es, en]) {
+      for (const base of pluralBases(dict)) {
+        assert.ok(Object.hasOwn(dict, `${base}.one`), `${base}.one`);
+        assert.ok(Object.hasOwn(dict, `${base}.other`), `${base}.other`);
+      }
     }
   });
 

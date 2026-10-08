@@ -105,6 +105,11 @@ describe("validateConfig", () => {
     );
   });
 
+  it("accepts apiBatchSize at both inclusive bounds", () => {
+    assert.doesNotThrow(() => validateConfig(makeCfg({ apiBatchSize: 1 })));
+    assert.doesNotThrow(() => validateConfig(makeCfg({ apiBatchSize: 100 })));
+  });
+
   it("rejects a non-integer apiBatchSize", () => {
     assert.throws(
       () => validateConfig(makeCfg({ apiBatchSize: 50.5 })),

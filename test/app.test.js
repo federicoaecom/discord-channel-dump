@@ -304,7 +304,7 @@ describe("runBrowserSession", () => {
     await runBrowserSession(config, null, deps);
 
     assert.equal(saved.length, 0);
-    assert.ok(logged.some((msg) => String(msg).includes("Dry run")));
+    assert.ok(logged.some((msg) => String(msg).includes("Dry run: would back up 1 message.")));
   });
 
   function closingPromptDeps(promptError, onContextClose) {
@@ -412,6 +412,61 @@ describe("runBrowserSession language", () => {
       '  > ENTER para capturar | "salir" para terminar: ',
     ]);
   });
+
+  for (const [language, shownWord] of [
+    ["en", "exit"],
+    ["es", "salir"],
+  ]) {
+    for (const typedWord of ["exit", "salir"]) {
+      it(`shows "${shownWord}" in the ${language} capture prompt and quits on "${typedWord}"`, async () => {
+        setLanguage(language);
+        const dir = tmpDir();
+        const questions = [];
+        let closed = false;
+        let saves = 0;
+
+        try {
+          await runBrowserSession({ backupDir: dir, profileDir: dir }, null, {
+            launchBrowser: async () => ({
+              context: {
+                close: () => {
+                  closed = true;
+                  return Promise.resolve();
+                },
+              },
+              page: { goto: async () => {}, evaluate: async () => null },
+              session: { getToken: () => "token" },
+            }),
+            createPrompt: () => ({
+              prompt: (question) => {
+                questions.push(question);
+                if (questions.length > 1) throw new Error(`"${typedWord}" did not quit`);
+                return typedWord;
+              },
+              close: () => {},
+            }),
+            saveChannel: async () => {
+              saves++;
+            },
+            logger: {
+              info: () => {},
+              error: () => {},
+              warn: () => {},
+              debug: () => {},
+              write: () => {},
+            },
+          });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+
+        assert.equal(questions.length, 1, questions.join("\n"));
+        assert.ok(questions[0].includes(`"${shownWord}"`), questions[0]);
+        assert.equal(closed, true);
+        assert.equal(saves, 0);
+      });
+    }
+  }
 
   it("warns about a missing token in Spanish by default", async () => {
     setLanguage(DEFAULT_LANGUAGE);

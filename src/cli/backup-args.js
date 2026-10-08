@@ -9,6 +9,7 @@ const pkg = require("../../package.json");
 const logger = require("../ui/logger");
 const { t } = require("../i18n");
 const { LANG_OPTION, languageHelpParams } = require("./language");
+const { parseOptions } = require("./options");
 
 /**
  * Print the CLI help message in the active language.
@@ -23,6 +24,16 @@ function printHelp() {
 function printVersion() {
   logger.info(pkg.version);
 }
+
+/** Options that take no value, mapped to the result field they set to true. */
+const FLAG_OPTIONS = Object.freeze({
+  "--help": "help",
+  "-h": "help",
+  "--version": "version",
+  "-v": "version",
+  "--verbose": "verbose",
+  "--dry-run": "dryRun",
+});
 
 /**
  * Options that take the next argument as their value, mapped to the result key
@@ -49,31 +60,11 @@ const VALUE_OPTIONS = Object.freeze({
  *   its value are consumed instead of reported as unknown or unexpected.
  */
 function parseCliArgs(argv) {
-  const result = { help: false, version: false, verbose: false, dryRun: false };
-  let i = 0;
-  while (i < argv.length) {
-    const arg = argv[i];
-    if (arg === "--help" || arg === "-h") {
-      result.help = true;
-    } else if (arg === "--version" || arg === "-v") {
-      result.version = true;
-    } else if (arg === "--verbose") {
-      result.verbose = true;
-    } else if (arg === "--dry-run") {
-      result.dryRun = true;
-    } else if (Object.hasOwn(VALUE_OPTIONS, arg)) {
-      if (i + 1 >= argv.length) {
-        return { error: t("cli.args.missingValue", { option: arg }) };
-      }
-      result[VALUE_OPTIONS[arg]] = argv[++i];
-    } else if (arg.startsWith("-")) {
-      return { error: t("cli.args.unknownOption", { option: arg }) };
-    } else {
-      return { error: t("cli.args.unexpectedArgument", { argument: arg }) };
-    }
-    i++;
-  }
-  return result;
+  return parseOptions(argv, {
+    flags: FLAG_OPTIONS,
+    valueOptions: VALUE_OPTIONS,
+    onPositional: (arg) => t("cli.args.unexpectedArgument", { argument: arg }),
+  });
 }
 
 module.exports = {
