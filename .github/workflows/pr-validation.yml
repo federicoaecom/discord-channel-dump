@@ -72,8 +72,26 @@ jobs:
               "type:chore",
               "type:breaking-change",
             ]);
-            const pullRequestLabels = pullRequest.labels.map(labelName).filter(Boolean);
-            const typeLabels = pullRequestLabels.filter((label) => label.startsWith("type:"));
+            // Read the current labels instead of the event snapshot: labels applied right after
+            // the PR is created (for example `gh pr create --label`) can miss the "opened" event.
+            const readTypeLabels = async () => {
+              const { data } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pullRequest.number,
+                per_page: 100,
+              });
+              return data
+                .map(labelName)
+                .filter(Boolean)
+                .filter((label) => label.startsWith("type:"));
+            };
+
+            let typeLabels = await readTypeLabels();
+            for (let attempt = 1; typeLabels.length === 0 && attempt <= 3; attempt++) {
+              await new Promise((resolve) => setTimeout(resolve, 10000));
+              typeLabels = await readTypeLabels();
+            }
 
             if (typeLabels.length !== 1 || !permittedTypeLabels.has(typeLabels[0])) {
               core.setFailed(
