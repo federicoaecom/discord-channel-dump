@@ -1,9 +1,12 @@
 const pkg = require("../package.json");
-const { describe, it } = require("node:test");
+const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
+const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
 const backupArgs = require("../src/cli/backup-args.js");
 const backup = require("../bin/backup.js");
 const regen = require("../bin/regen-html.js");
@@ -18,6 +21,24 @@ function childEnv(extra = {}) {
     delete env.DISCORD_LANG;
   }
   return env;
+}
+
+// In-process tests assert English text; pin it and restore the default afterwards.
+// Subprocess tests select their language through argv or childEnv().
+beforeEach(() => {
+  setLanguage("en");
+});
+
+afterEach(() => {
+  setLanguage(DEFAULT_LANGUAGE);
+});
+
+function runCli(scriptPath, args, extraEnv) {
+  return spawnSync(process.execPath, [scriptPath, ...args], {
+    encoding: "utf8",
+    timeout: 10000,
+    env: childEnv(extraEnv),
+  });
 }
 
 function runBackupMain(args, options = {}) {
@@ -173,6 +194,29 @@ describe("handleFatalError", () => {
 
     assert.match(output.join("\n"), /Fatal error: unexpected failure/);
   });
+
+  it("prints the fatal error label in Spanish when the language is Spanish", () => {
+    setLanguage("es");
+    const output = [];
+    const originalError = console.error;
+    const originalExit = process.exit;
+    console.error = (...args) => output.push(args.join(" "));
+    process.exit = (code) => {
+      throw new Error(`process.exit:${code}`);
+    };
+
+    try {
+      assert.throws(
+        () => backup.handleFatalError({ message: "unexpected failure" }),
+        /process\.exit/
+      );
+    } finally {
+      console.error = originalError;
+      process.exit = originalExit;
+    }
+
+    assert.match(output.join("\n"), /Error fatal: unexpected failure/);
+  });
 });
 
 describe("backup.js main diagnostics", () => {
@@ -260,14 +304,25 @@ describe("CLI smoke tests", () => {
   const backupPath = path.resolve(__dirname, "..", "bin", "backup.js");
   const regenPath = path.resolve(__dirname, "..", "bin", "regen-html.js");
 
-  it("backup.js --help prints usage and exits 0", () => {
-    const result = spawnSync(process.execPath, [backupPath, "--help"], {
-      encoding: "utf8",
-      timeout: 10000,
-      env: childEnv(),
-    });
+  it("backup.js --help prints Spanish usage by default and exits 0", () => {
+    const result = runCli(backupPath, ["--help"]);
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /Usage:/);
+    assert.match(result.stdout, /Uso: node bin\/backup\.js \[opciones\]/);
+    assert.match(result.stdout, /Muestra esta ayuda/);
+    assert.doesNotMatch(result.stdout, /Usage:/);
+  });
+
+  it("backup.js --lang en --help prints English usage", () => {
+    const result = runCli(backupPath, ["--lang", "en", "--help"]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Usage: node bin\/backup\.js \[options\]/);
+    assert.match(result.stdout, /Show this help message/);
+  });
+
+  it("backup.js --help prints English usage with DISCORD_LANG=en", () => {
+    const result = runCli(backupPath, ["--help"], { DISCORD_LANG: "en" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Usage: node bin\/backup\.js \[options\]/);
   });
 
   it("backup.js --version prints the version and exits 0", () => {
@@ -280,14 +335,17 @@ describe("CLI smoke tests", () => {
     assert.equal(result.stdout.trim(), pkg.version);
   });
 
-  it("regen-html.js --help prints usage and exits 0", () => {
-    const result = spawnSync(process.execPath, [regenPath, "--help"], {
-      encoding: "utf8",
-      timeout: 10000,
-      env: childEnv(),
-    });
+  it("regen-html.js --help prints Spanish usage by default and exits 0", () => {
+    const result = runCli(regenPath, ["--help"]);
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /Usage:/);
+    assert.match(result.stdout, /Uso: node bin\/regen-html\.js \[opciones\] <backup-folder>/);
+    assert.doesNotMatch(result.stdout, /Usage:/);
+  });
+
+  it("regen-html.js --lang en --help prints English usage", () => {
+    const result = runCli(regenPath, ["--lang", "en", "--help"]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Usage: node bin\/regen-html\.js \[options\] <backup-folder>/);
   });
 
   it("regen-html.js --version prints the version and exits 0", () => {
@@ -324,37 +382,99 @@ describe("CLI smoke tests", () => {
     ["backup.js", backupPath],
     ["regen-html.js", regenPath],
   ]) {
-    it(`${name} rejects an invalid --lang value and exits 1`, () => {
-      const result = spawnSync(process.execPath, [scriptPath, "--lang", "xx"], {
-        encoding: "utf8",
-        timeout: 10000,
-        env: childEnv(),
-      });
+    it(`${name} rejects an invalid --lang value in Spanish by default and exits 1`, () => {
+      const result = runCli(scriptPath, ["--lang", "xx"]);
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /Error: Valor no válido para --lang: "xx"/);
+      assert.match(result.stderr, /Valores admitidos: es, en/);
+    });
+
+    it(`${name} rejects an invalid --lang value in the DISCORD_LANG language`, () => {
+      const result = runCli(scriptPath, ["--lang", "xx"], { DISCORD_LANG: "en" });
       assert.equal(result.status, 1);
       assert.match(result.stderr, /Error: Invalid value for --lang: "xx"/);
       assert.match(result.stderr, /Supported values: es, en/);
     });
 
-    it(`${name} rejects an invalid DISCORD_LANG value and exits 1`, () => {
-      const result = spawnSync(process.execPath, [scriptPath, "--help"], {
-        encoding: "utf8",
-        timeout: 10000,
-        env: childEnv({ DISCORD_LANG: "xx" }),
-      });
-      assert.equal(result.status, 1);
-      assert.match(result.stderr, /Error: Invalid value for DISCORD_LANG: "xx"/);
+    it(`${name} warns about an invalid DISCORD_LANG and falls back to Spanish`, () => {
+      const result = runCli(scriptPath, ["--help"], { DISCORD_LANG: "xx" });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stderr, /Advertencia: valor no válido para DISCORD_LANG: "xx"/);
+      assert.match(result.stderr, /Valores admitidos: es, en/);
+      assert.match(result.stdout, /Uso:/);
+    });
+
+    it(`${name} --version still works with an invalid DISCORD_LANG`, () => {
+      const result = runCli(scriptPath, ["--version"], { DISCORD_LANG: "xx" });
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout.trim(), pkg.version);
+      assert.match(result.stderr, /DISCORD_LANG: "xx"/);
     });
 
     it(`${name} lets a valid --lang win over an invalid DISCORD_LANG`, () => {
-      const result = spawnSync(process.execPath, [scriptPath, "--lang", "en", "--help"], {
-        encoding: "utf8",
-        timeout: 10000,
-        env: childEnv({ DISCORD_LANG: "xx" }),
-      });
+      const result = runCli(scriptPath, ["--lang", "en", "--help"], { DISCORD_LANG: "xx" });
       assert.equal(result.status, 0, result.stderr);
       assert.match(result.stdout, /Usage:/);
+      assert.equal(result.stderr, "");
+    });
+
+    it(`${name} reports argument errors in the --lang language even before --lang`, () => {
+      const english = runCli(scriptPath, ["--foo", "--lang", "en"]);
+      assert.equal(english.status, 1);
+      assert.match(english.stderr, /Error: Unknown option: --foo/);
+      assert.match(english.stdout, /Usage:/);
+
+      const spanish = runCli(scriptPath, ["--foo"]);
+      assert.equal(spanish.status, 1);
+      assert.match(spanish.stderr, /Error: Opción desconocida: --foo/);
+      assert.match(spanish.stdout, /Uso:/);
     });
   }
+
+  it("regen-html.js reports a missing folder argument in the selected language", () => {
+    const english = runCli(regenPath, ["--lang", "en"]);
+    assert.equal(english.status, 1);
+    assert.match(english.stderr, /Error: Missing backup-folder argument\./);
+
+    const spanish = runCli(regenPath, []);
+    assert.equal(spanish.status, 1);
+    assert.match(spanish.stderr, /Error: Falta el argumento backup-folder\./);
+  });
+
+  it("regen-html.js reports a missing messages.json in the selected language", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-missing-"));
+    const english = runCli(regenPath, ["--lang", "en", dir]);
+    assert.equal(english.status, 1);
+    assert.match(english.stderr, /Not found: .*messages\.json/);
+
+    const spanish = runCli(regenPath, [dir]);
+    assert.equal(spanish.status, 1);
+    assert.match(spanish.stderr, /No se encontró: .*messages\.json/);
+  });
+
+  it("regen-html.js reports an unparsable messages.json in the selected language", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-bad-"));
+    fs.writeFileSync(path.join(dir, "messages.json"), "{not json", "utf8");
+    const english = runCli(regenPath, ["--lang", "en", dir]);
+    assert.equal(english.status, 1);
+    assert.match(english.stderr, /Error: Could not read or parse .*messages\.json: /);
+
+    const spanish = runCli(regenPath, [dir]);
+    assert.equal(spanish.status, 1);
+    assert.match(spanish.stderr, /Error: No se pudo leer o interpretar .*messages\.json: /);
+  });
+
+  it("regen-html.js reports the regenerated file and message count in the selected language", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-ok-"));
+    fs.writeFileSync(path.join(dir, "messages.json"), "[]", "utf8");
+    const english = runCli(regenPath, ["--lang", "en", dir]);
+    assert.equal(english.status, 0, english.stderr);
+    assert.match(english.stdout, /^ {2}Done: .*index\.html {2}\(0 messages\)/);
+
+    const spanish = runCli(regenPath, [dir]);
+    assert.equal(spanish.status, 0, spanish.stderr);
+    assert.match(spanish.stdout, /^ {2}Listo: .*index\.html {2}\(0 mensajes\)/);
+  });
 
   it("backup.js prints a friendly config error and exits 1", () => {
     const script = `
