@@ -5,6 +5,7 @@
 "use strict";
 
 const path = require("path");
+const { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } = require("./i18n");
 
 const defaults = {
   // Directory where backups will be stored
@@ -30,6 +31,10 @@ const defaults = {
 
   // When true, fetch message metadata but do not save files or download media
   dryRun: false,
+
+  // Interface language. The CLI resolves it with resolveLanguage() in src/i18n
+  // (--lang, then DISCORD_LANG, then this default) and passes it as an override.
+  language: DEFAULT_LANGUAGE,
 };
 
 class ConfigError extends Error {
@@ -83,6 +88,9 @@ function validateConfig(config) {
   }
   if (typeof config.dryRun !== "boolean") {
     throw new ConfigError("dryRun must be a boolean.");
+  }
+  if (!SUPPORTED_LANGUAGES.includes(config.language)) {
+    throw new ConfigError(`language must be one of: ${SUPPORTED_LANGUAGES.join(", ")}.`);
   }
 }
 
