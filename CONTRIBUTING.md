@@ -80,10 +80,21 @@ Every pull request starts from an approved issue. The `PR Validation` workflow (
 | Area | Language |
 |------|----------|
 | Code, comments, documentation, commits, issues, and pull requests | English |
-| End-user interface (the offline viewer) | Spanish |
+| End-user interface (terminal output and the offline viewer) | Spanish by default; English with `--lang en` or `DISCORD_LANG=en` |
+| `[debug]` lines printed by `--verbose` | English |
 | `README.es.md` | Spanish translation of `README.md` |
 
 `README.md` is the source of truth. When you change it, update `README.es.md` too when practical.
+
+User-facing strings live in two flat dictionaries, `src/i18n/es.js` and `src/i18n/en.js`, and are read through `t()` from `src/i18n/index.js`. English is the fallback when a key is missing.
+
+### Adding or changing a user-facing message
+
+- [ ] Add or change the key in **both** `src/i18n/es.js` and `src/i18n/en.js`, with identical `{placeholder}` names. The parity tests in `test/i18n/index.test.js` fail otherwise.
+- [ ] Print it with `t("area.key", { ...params })`; do not hard-code user-facing text.
+- [ ] Keep `[debug]` lines (`logger.debug`) in English and out of the dictionaries.
+- [ ] Never branch on message text. Detect errors by identity (`err.name`, `err.code`, or the error class), so behavior does not change with the language.
+- [ ] Pin the language in tests. In-process tests call `setLanguage()` and restore it with `afterEach(() => setLanguage(DEFAULT_LANGUAGE))`. Subprocess tests pass `--lang` or set `DISCORD_LANG`.
 
 ## License
 

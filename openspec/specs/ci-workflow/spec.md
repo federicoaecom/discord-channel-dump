@@ -42,7 +42,7 @@ The workflow MUST run the following steps: checkout the repository, install depe
 - GIVEN the workflow runs on the Node.js 20.19.0 matrix entry
 - WHEN the job executes
 - THEN it runs `npm audit --omit=dev` after `npm ci`
-- AND after the tests it packs the project with `npm pack`, installs the tarball globally into a temporary prefix, and checks that `discord-channel-dump --help` prints `Usage:` and `discord-channel-dump --version` matches `package.json`
+- AND after the tests it packs the project with `npm pack`, installs the tarball globally into a temporary prefix, and checks that `discord-channel-dump --help` prints `Uso:` (the default Spanish interface), that `discord-channel-dump --lang en --help` prints `Usage:`, and that `discord-channel-dump --version` matches `package.json`
 
 ### Requirement: Push and Pull Request Triggers
 
