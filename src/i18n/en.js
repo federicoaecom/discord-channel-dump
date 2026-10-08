@@ -60,7 +60,8 @@ module.exports = Object.freeze({
   "cli.regen.missingFolder": "Missing backup-folder argument.",
   "cli.regen.notFound": "Not found: {path}",
   "cli.regen.parseError": "Could not read or parse {path}: {reason}",
-  "cli.regen.done": "Done: {path}  ({count} messages)",
+  "cli.regen.done.one": "Done: {path}  ({count} message)",
+  "cli.regen.done.other": "Done: {path}  ({count} messages)",
 
   // src/app.js interactive session
   "app.banner": "Discord Channel Dump  v{version} (API mode)",
@@ -76,7 +77,8 @@ module.exports = Object.freeze({
   "app.channelIdMissing": "Could not detect channel ID. Navigate to a channel first.",
   "app.channelId": "Channel ID: {id}",
   "app.channelName": 'Channel name: "{name}"',
-  "app.dryRunSummary": "Dry run: would back up {count} messages.",
+  "app.dryRunSummary.one": "Dry run: would back up {count} message.",
+  "app.dryRunSummary.other": "Dry run: would back up {count} messages.",
   "app.done": "Done.",
   "app.shutdown": "Cancelling and cleaning up…",
 
@@ -91,9 +93,10 @@ module.exports = Object.freeze({
     "{processed}/{total} unique | {downloaded} downloaded {reused} reused {failed} failed {elapsed}s",
   "writer.mediaSummary": "{downloaded} downloaded, {reused} reused, {failed} failed.",
   "writer.folder": "Folder: {path}",
-  "writer.saved": "Saved",
-  "writer.messages": "messages",
-  "writer.mediaCounts": "Images: {images} | Attachments: {attachments}",
+  "writer.savedSummary.one":
+    "Saved {count} message | Images: {images} | Attachments: {attachments}",
+  "writer.savedSummary.other":
+    "Saved {count} messages | Images: {images} | Attachments: {attachments}",
   "writer.output": "Output: {path}",
   "writer.invalidName.empty":
     'Invalid channel name "{name}": expected a non-empty channel subdirectory',

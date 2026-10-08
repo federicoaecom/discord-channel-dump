@@ -21,13 +21,14 @@ const fs = require("fs");
 const path = require("path");
 const pkg = require("../package.json");
 const logger = require("../src/ui/logger");
-const { t, getLanguage } = require("../src/i18n");
+const { t, tPlural, getLanguage } = require("../src/i18n");
 const {
   LANG_OPTION,
   applyLanguage,
   findLangFlag,
   languageHelpParams,
 } = require("../src/cli/language");
+const { parseOptions } = require("../src/cli/options");
 const { generateHtml } = require("../src/viewer/render");
 
 function printHelp() {
@@ -37,6 +38,14 @@ function printHelp() {
 function printVersion() {
   logger.info(pkg.version);
 }
+
+/** Options that take no value, mapped to the result field they set to true. */
+const FLAG_OPTIONS = Object.freeze({
+  "--help": "help",
+  "-h": "help",
+  "--version": "version",
+  "-v": "version",
+});
 
 /**
  * Options that take the next argument as their value, mapped to the result key
@@ -57,27 +66,14 @@ const VALUE_OPTIONS = Object.freeze({ [LANG_OPTION]: "lang" });
  *   consumed instead of reported as unknown or taken as the backup folder.
  */
 function parseCliArgs(argv) {
-  const result = { help: false, version: false, _: [] };
-  let i = 0;
-  while (i < argv.length) {
-    const arg = argv[i];
-    if (arg === "--help" || arg === "-h") {
-      result.help = true;
-    } else if (arg === "--version" || arg === "-v") {
-      result.version = true;
-    } else if (Object.hasOwn(VALUE_OPTIONS, arg)) {
-      if (i + 1 >= argv.length) {
-        return { error: t("cli.args.missingValue", { option: arg }) };
-      }
-      result[VALUE_OPTIONS[arg]] = argv[++i];
-    } else if (arg.startsWith("-")) {
-      return { error: t("cli.args.unknownOption", { option: arg }) };
-    } else {
+  return parseOptions(argv, {
+    flags: FLAG_OPTIONS,
+    valueOptions: VALUE_OPTIONS,
+    initial: { _: [] },
+    onPositional: (arg, result) => {
       result._.push(arg);
-    }
-    i++;
-  }
-  return result;
+    },
+  });
 }
 
 async function main(argv) {
@@ -139,7 +135,7 @@ async function main(argv) {
 
   // The viewer uses the language applied above (--lang, then DISCORD_LANG).
   fs.writeFileSync(htmlPath, generateHtml(channelName, messages, { lang: getLanguage() }), "utf8");
-  logger.info(`  ${t("cli.regen.done", { path: htmlPath, count: messages.length })}`);
+  logger.info(`  ${tPlural("cli.regen.done", messages.length, { path: htmlPath })}`);
 }
 
 if (require.main === module) {

@@ -496,6 +496,24 @@ describe("CLI smoke tests", () => {
     assert.match(spanish.stdout, /^ {2}Listo: .*index\.html {2}\(0 mensajes\)/);
   });
 
+  it("regen-html.js uses the singular for a single message in the selected language", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-one-"));
+    try {
+      const messages = [{ msgId: "1", timestamp: "2024-03-15T14:32:00.000Z", text: "hi" }];
+      fs.writeFileSync(path.join(dir, "messages.json"), JSON.stringify(messages), "utf8");
+
+      const english = runCli(regenPath, ["--lang", "en", dir]);
+      assert.equal(english.status, 0, english.stderr);
+      assert.match(english.stdout, /^ {2}Done: .*index\.html {2}\(1 message\)\r?\n$/);
+
+      const spanish = runCli(regenPath, [dir]);
+      assert.equal(spanish.status, 0, spanish.stderr);
+      assert.match(spanish.stdout, /^ {2}Listo: .*index\.html {2}\(1 mensaje\)\r?\n$/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("regen-html.js writes the viewer in the selected language", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-viewer-"));
     const ts = "2024-03-15T14:32:00.000Z";

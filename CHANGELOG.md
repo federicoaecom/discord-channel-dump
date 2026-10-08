@@ -28,6 +28,9 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - The viewer header no longer shows "1 msgs" for a single message.
+- `bin/regen-html.js` no longer prints "(1 messages)" / "(1 mensajes)" for a single message.
+- The end-of-backup summary is pluralized ("Saved 1 message" / "Se guardó 1 mensaje") and is now one complete sentence per language.
+- The dry-run summary is pluralized ("would back up 1 message" / "se respaldaría 1 mensaje").
 - Stabilized media filename identity: rotating Discord CDN `ex`/`is`/`hm` signatures reuse the same file, while meaningful query parameters keep resources distinct.
 
 ## [2.0.0] - 2026-09-04

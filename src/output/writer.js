@@ -15,7 +15,7 @@ const { downloadFile } = require("../downloader");
 const { isCancelError } = require("../cancel-token");
 const { green, yellow, dim } = require("../ui/colors");
 const logger = require("../ui/logger");
-const { t, getLanguage } = require("../i18n");
+const { t, tPlural, getLanguage } = require("../i18n");
 const { renderProgressBar } = require("../ui/progress");
 
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
@@ -217,10 +217,12 @@ async function saveChannel(
   const imgs = messages.reduce((n, m) => n + (m.localImages || []).length, 0);
   const atts = messages.reduce((n, m) => n + (m.localAttachments || []).length, 0);
 
-  const mediaCounts = t("writer.mediaCounts", { images: imgs, attachments: atts });
-  logger.info(
-    `\n  ${green(t("writer.saved"))} ${messages.length} ${dim(t("writer.messages"))} | ${mediaCounts}`
-  );
+  // One complete sentence per plural form, so each language controls its word order.
+  const summary = tPlural("writer.savedSummary", messages.length, {
+    images: imgs,
+    attachments: atts,
+  });
+  logger.info(`\n  ${green(summary)}`);
   logger.info(`  ${t("writer.output", { path: channelDir })}\n`);
   logger.info(dim("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 

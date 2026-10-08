@@ -7,6 +7,9 @@
 const path = require("path");
 const { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, t } = require("./i18n");
 
+// Inclusive bounds for apiBatchSize; Discord returns at most 100 messages per request.
+const API_BATCH_SIZE_RANGE = Object.freeze({ min: 1, max: 100 });
+
 const defaults = {
   // Directory where backups will be stored
   backupDir: process.env.DISCORD_BACKUP_DIR || path.join(__dirname, "..", "backups"),
@@ -14,7 +17,7 @@ const defaults = {
   // Directory for persistent browser session profiles (cookies, login state)
   profileDir: process.env.DISCORD_PROFILE_DIR || path.join(__dirname, "..", "browser-profile"),
 
-  // Number of messages to request per API call (max 100)
+  // Number of messages to request per API call (see API_BATCH_SIZE_RANGE)
   apiBatchSize: 50,
 
   // Delay in milliseconds between consecutive API requests to avoid rate limits
@@ -71,12 +74,13 @@ function validateConfig(config) {
       throw configError("config.nonEmptyString", { field });
     }
   }
+  const { min, max } = API_BATCH_SIZE_RANGE;
   if (
     !Number.isInteger(config.apiBatchSize) ||
-    config.apiBatchSize <= 0 ||
-    config.apiBatchSize > 100
+    config.apiBatchSize < min ||
+    config.apiBatchSize > max
   ) {
-    throw configError("config.integerRange", { field: "apiBatchSize", min: 1, max: 100 });
+    throw configError("config.integerRange", { field: "apiBatchSize", min, max });
   }
   if (!Number.isFinite(config.apiDelayMs) || config.apiDelayMs < 0) {
     throw configError("config.nonNegativeNumber", { field: "apiDelayMs" });

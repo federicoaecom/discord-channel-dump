@@ -60,7 +60,8 @@ module.exports = Object.freeze({
   "cli.regen.missingFolder": "Falta el argumento backup-folder.",
   "cli.regen.notFound": "No se encontró: {path}",
   "cli.regen.parseError": "No se pudo leer o interpretar {path}: {reason}",
-  "cli.regen.done": "Listo: {path}  ({count} mensajes)",
+  "cli.regen.done.one": "Listo: {path}  ({count} mensaje)",
+  "cli.regen.done.other": "Listo: {path}  ({count} mensajes)",
 
   // src/app.js interactive session
   "app.banner": "Discord Channel Dump  v{version} (modo API)",
@@ -76,7 +77,8 @@ module.exports = Object.freeze({
   "app.channelIdMissing": "No se pudo detectar el ID del canal. Abra un canal primero.",
   "app.channelId": "ID del canal: {id}",
   "app.channelName": 'Nombre del canal: "{name}"',
-  "app.dryRunSummary": "Simulación: se respaldarían {count} mensajes.",
+  "app.dryRunSummary.one": "Simulación: se respaldaría {count} mensaje.",
+  "app.dryRunSummary.other": "Simulación: se respaldarían {count} mensajes.",
   "app.done": "Listo.",
   "app.shutdown": "Cancelando y limpiando…",
 
@@ -91,9 +93,10 @@ module.exports = Object.freeze({
     "{processed}/{total} archivos | descargados: {downloaded} reutilizados: {reused} fallidos: {failed} {elapsed}s",
   "writer.mediaSummary": "Descargados: {downloaded}, reutilizados: {reused}, fallidos: {failed}.",
   "writer.folder": "Carpeta: {path}",
-  "writer.saved": "Se guardaron",
-  "writer.messages": "mensajes",
-  "writer.mediaCounts": "Imágenes: {images} | Adjuntos: {attachments}",
+  "writer.savedSummary.one":
+    "Se guardó {count} mensaje | Imágenes: {images} | Adjuntos: {attachments}",
+  "writer.savedSummary.other":
+    "Se guardaron {count} mensajes | Imágenes: {images} | Adjuntos: {attachments}",
   "writer.output": "Salida: {path}",
   "writer.invalidName.empty":
     'Nombre de canal no válido "{name}": se esperaba un subdirectorio de canal no vacío',

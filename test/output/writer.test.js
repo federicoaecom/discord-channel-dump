@@ -7,13 +7,25 @@ const path = require("path");
 const { saveChannel, downloadMedia } = require("../../src/output/writer.js");
 const { DEFAULT_LANGUAGE, setLanguage } = require("../../src/i18n");
 
+// Every directory created by tmpDir(), removed after each test.
+const tmpDirs = [];
+
 // The active language is module-level state; reset it so tests stay independent.
 afterEach(() => {
   setLanguage(DEFAULT_LANGUAGE);
+  for (const dir of tmpDirs.splice(0)) {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
 });
 
+/**
+ * Create a temporary directory that is removed after the current test.
+ * @returns {string} The directory path.
+ */
 function tmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "writer-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "writer-"));
+  tmpDirs.push(dir);
+  return dir;
 }
 
 /**
@@ -343,8 +355,19 @@ describe("saveChannel", () => {
     );
 
     assert.ok(output.includes(`  Folder: ${result.channelDir}\n`), output);
-    assert.ok(output.includes("\n  Saved 1 messages | Images: 1 | Attachments: 0\n"), output);
+    assert.ok(output.includes("\n  Saved 1 message | Images: 1 | Attachments: 0\n"), output);
     assert.ok(output.includes(`  Output: ${result.channelDir}\n`), output);
+  });
+
+  it("uses the plural in the saved summary for several messages", async () => {
+    const dir = tmpDir();
+    const messages = [{ msgId: "1" }, { msgId: "2" }];
+
+    const { output } = await captureStdout(() =>
+      saveChannel("channel", messages, { backupDir: dir }, null, async () => {})
+    );
+
+    assert.ok(output.includes("\n  Saved 2 messages | Images: 0 | Attachments: 0\n"), output);
   });
 
   it("renders a progress bar and success summary during real downloads", async () => {
@@ -573,14 +596,22 @@ describe("writer output in the default language (Spanish)", () => {
         saveChannel("canal", [{ msgId: "1" }], { backupDir: dir }, null, async () => {})
       );
       assert.ok(output.includes(`  Carpeta: ${result.channelDir}\n`), output);
-      assert.ok(
-        output.includes("\n  Se guardaron 1 mensajes | Imágenes: 0 | Adjuntos: 0\n"),
-        output
-      );
+      assert.ok(output.includes("\n  Se guardó 1 mensaje | Imágenes: 0 | Adjuntos: 0\n"), output);
       assert.ok(output.includes(`  Salida: ${result.channelDir}\n`), output);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("uses the plural in the Spanish saved summary for several messages", async () => {
+    const dir = tmpDir();
+    const messages = [{ msgId: "1" }, { msgId: "2" }];
+
+    const { output } = await captureStdout(() =>
+      saveChannel("canal", messages, { backupDir: dir }, null, async () => {})
+    );
+
+    assert.ok(output.includes("\n  Se guardaron 2 mensajes | Imágenes: 0 | Adjuntos: 0\n"), output);
   });
 
   for (const [channelName, expected] of [

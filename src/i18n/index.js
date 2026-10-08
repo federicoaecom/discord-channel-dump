@@ -177,6 +177,33 @@ function translateIn(language, key, params) {
 }
 
 /**
+ * Pick the plural form of a key for a count: `<key>.one` for exactly 1 and
+ * `<key>.other` for everything else, in every supported language.
+ *
+ * `Intl.PluralRules` is deliberately not used: it returns `many` for Spanish
+ * counts such as 1,000,000, which would need a third form per key. The
+ * dictionaries define both forms for every plural key.
+ * @param {string} key - Base message key, without the `.one` / `.other` suffix.
+ * @param {number} count - The count that selects the form.
+ * @returns {string} The full message key.
+ */
+function pluralKey(key, count) {
+  return `${key}.${count === 1 ? "one" : "other"}`;
+}
+
+/**
+ * Translate the plural form of a key for a count in the active language.
+ * The count also fills the `{count}` placeholder.
+ * @param {string} key - Base message key, without the `.one` / `.other` suffix.
+ * @param {number} count - The count that selects the form.
+ * @param {Record<string, unknown>} [params] - Other placeholder values.
+ * @returns {string} The translated, interpolated message.
+ */
+function tPlural(key, count, params) {
+  return t(pluralKey(key, count), { ...params, count });
+}
+
+/**
  * Translate a key in every supported language, regardless of the active one.
  * Useful for input words that must be accepted in any language (for example
  * the quit command), so the accepted set comes from the dictionaries.
@@ -198,5 +225,7 @@ module.exports = {
   translate,
   translateIn,
   translationsOf,
+  pluralKey,
+  tPlural,
   t,
 };
