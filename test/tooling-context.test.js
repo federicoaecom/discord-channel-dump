@@ -168,6 +168,38 @@ describe("professional layout tooling and documentation", () => {
     assert.match(smokeStep.run, /--version\)" = "\$expected_version"/);
   });
 
+  it("hardens workflows and keeps the package off the npm registry", () => {
+    const pkg = JSON.parse(read("package.json"));
+    assert.equal(pkg.private, true, "package.json must stay private to prevent accidental publish");
+
+    const ci = read(".github", "workflows", "ci.yml");
+    const prValidation = read(".github", "workflows", "pr-validation.yml");
+    assert.match(ci, /^permissions:\r?\n {2}contents: read\r?$/m);
+
+    for (const [file, workflow] of [
+      ["ci.yml", ci],
+      ["pr-validation.yml", prValidation],
+    ]) {
+      const uses = [...workflow.matchAll(/^\s*(?:-\s*)?uses:\s*(\S+)(.*)$/gm)];
+      assert.ok(uses.length > 0, `${file} must use at least one action`);
+      for (const [, reference, comment] of uses) {
+        assert.match(
+          reference,
+          /^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/,
+          `${file} must pin ${reference} to a full commit SHA`
+        );
+        assert.match(comment, /# v\d+\.\d+\.\d+/, `${file} must note the version of ${reference}`);
+      }
+    }
+
+    // Dependabot PRs cannot link an approved issue; the governance job skips them.
+    assert.match(
+      prValidation,
+      /^\s+if: github\.event\.pull_request\.user\.login != 'dependabot\[bot\]'\r?$/m
+    );
+    assert.doesNotMatch(prValidation, /pull_request_target/);
+  });
+
   it("documents bin commands and preserved runtime directories", () => {
     for (const file of ["README.md", "AGENTS.md"]) {
       const contents = read(file);

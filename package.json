@@ -2,6 +2,7 @@
   "name": "discord-channel-dump",
   "version": "2.1.1",
   "description": "Discord channel backup tool using browser automation",
+  "private": true,
   "main": "bin/backup.js",
   "bin": {
     "discord-channel-dump": "bin/backup.js"
@@ -30,11 +31,16 @@
     "playwright",
     "archive"
   ],
+  "author": "Fede A",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/federicoaecom/discord-channel-dump.git"
   },
+  "bugs": {
+    "url": "https://github.com/federicoaecom/discord-channel-dump/issues"
+  },
+  "homepage": "https://github.com/federicoaecom/discord-channel-dump#readme",
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || >=24"
   },

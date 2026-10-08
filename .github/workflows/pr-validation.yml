@@ -12,11 +12,14 @@ permissions:
 jobs:
   governance:
     name: Validate governance
+    # Dependabot PRs cannot link an approved issue, so skip governance for them. A skipped job
+    # counts as passing for required checks, and a fork cannot impersonate the dependabot[bot] login.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
 
     steps:
       - name: Validate issue approval and PR type
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
