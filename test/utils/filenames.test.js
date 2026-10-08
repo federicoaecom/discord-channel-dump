@@ -1,7 +1,6 @@
-const { describe, it } = require("node:test");
+const { describe, it, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 const {
   filenameFromUrl,
@@ -9,6 +8,13 @@ const {
   canonicalMediaIdentity,
   mediaFilenameFromUrl,
 } = require("../../src/utils/filenames.js");
+const { createTempDirs } = require("../helpers/temp-dirs.js");
+
+const temp = createTempDirs();
+
+afterEach(() => {
+  temp.cleanup();
+});
 
 describe("filenameFromUrl", () => {
   it("extracts the filename from a URL path", () => {
@@ -92,12 +98,12 @@ describe("mediaFilenameFromUrl", () => {
 
 describe("uniqueFilename", () => {
   it("returns the original filename when there is no collision", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unique-"));
+    const dir = temp.make("unique-");
     assert.equal(uniqueFilename(dir, "photo.png"), "photo.png");
   });
 
   it("appends an increment when the filename already exists", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unique-"));
+    const dir = temp.make("unique-");
     fs.writeFileSync(path.join(dir, "photo.png"), "x");
     assert.equal(uniqueFilename(dir, "photo.png"), "photo_1.png");
     fs.writeFileSync(path.join(dir, "photo_1.png"), "x");
@@ -105,7 +111,7 @@ describe("uniqueFilename", () => {
   });
 
   it("works for filenames without an extension", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unique-"));
+    const dir = temp.make("unique-");
     fs.writeFileSync(path.join(dir, "file"), "x");
     assert.equal(uniqueFilename(dir, "file"), "file_1");
   });

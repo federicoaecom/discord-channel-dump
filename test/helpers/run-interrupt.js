@@ -2,7 +2,6 @@
 
 const { createHash } = require("crypto");
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 const { startServer } = require("./fixture-server");
 const { saveChannel } = require("../../src/output/writer");
@@ -40,7 +39,10 @@ function waitForFile(filePath, timeoutMs) {
 }
 
 async function main() {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "interrupt-"));
+  // The parent test creates and removes this directory, so it is cleaned up
+  // even when this process crashes before reporting readiness.
+  const tmpDir = process.argv[2];
+  if (!tmpDir) throw new Error("usage: run-interrupt.js <temp-dir>");
   const cfg = loadConfig({
     backupDir: tmpDir,
     profileDir: path.join(tmpDir, "profile"),
@@ -102,7 +104,7 @@ async function main() {
         throw new Error("Download completed before interruption was ready");
       }),
     ]);
-    process.send?.({ type: "part-ready", partPath, tmpDir });
+    process.send?.({ type: "part-ready", partPath });
     await savePromise;
   } catch (err) {
     console.error("saveChannel error:", err.message);

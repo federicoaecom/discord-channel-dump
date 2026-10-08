@@ -1,10 +1,18 @@
-const { describe, it } = require("node:test");
+const { describe, it, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs");
+const { createTempDirs } = require("./helpers/temp-dirs.js");
 
 const helperPath = path.resolve(__dirname, "helpers", "run-interrupt.js");
+const temp = createTempDirs();
+
+// The test owns the helper's backup directory, so it is removed even when the
+// helper fails before reporting readiness.
+afterEach(() => {
+  temp.cleanup();
+});
 
 function waitForReady(child, getOutput) {
   return new Promise((resolve, reject) => {
@@ -38,7 +46,8 @@ function waitForReady(child, getOutput) {
 
 describe("safe interruption", () => {
   it("cleans up .part files and exits nonzero on SIGINT", async () => {
-    const child = spawn(process.execPath, [helperPath], {
+    const tmpDir = temp.make("interrupt-");
+    const child = spawn(process.execPath, [helperPath, tmpDir], {
       stdio: ["ipc", "pipe", "pipe"],
     });
 
@@ -55,11 +64,9 @@ describe("safe interruption", () => {
     const closePromise = new Promise((resolve) => {
       child.once("close", (code, signal) => resolve({ code, signal }));
     });
-    let tmpDir;
 
     try {
       const ready = await waitForReady(child, () => output);
-      tmpDir = ready.tmpDir;
       assert.equal(fs.existsSync(ready.partPath), true, "expected an active .part file");
 
       // Windows cannot deliver SIGINT to the child, so use its IPC bridge to
@@ -75,8 +82,11 @@ describe("safe interruption", () => {
         `.part file still exists: ${ready.partPath}`
       );
     } finally {
-      if (child.exitCode === null && child.signalCode === null) child.kill();
-      if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
+      // Wait for the child to exit so it releases files before cleanup.
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill();
+        await closePromise;
+      }
     }
   });
 });

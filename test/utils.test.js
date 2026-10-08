@@ -1,8 +1,14 @@
-const { describe, it } = require("node:test");
+const { describe, it, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
+const { createTempDirs } = require("./helpers/temp-dirs.js");
+
+const temp = createTempDirs();
+
+afterEach(() => {
+  temp.cleanup();
+});
 
 const {
   sanitize,
@@ -48,12 +54,12 @@ describe("filenameFromUrl", () => {
 
 describe("uniqueFilename", () => {
   it("returns the original filename when there is no collision", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unique-"));
+    const dir = temp.make("unique-");
     assert.equal(uniqueFilename(dir, "file.txt"), "file.txt");
   });
 
   it("appends an increment when the filename already exists", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unique-"));
+    const dir = temp.make("unique-");
     fs.writeFileSync(path.join(dir, "file.txt"), "x");
     fs.writeFileSync(path.join(dir, "file_1.txt"), "x");
     assert.equal(uniqueFilename(dir, "file.txt"), "file_2.txt");

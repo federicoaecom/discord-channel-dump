@@ -1,12 +1,14 @@
 const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 const { startServer, stopServer } = require("./helpers/fixture-server.js");
 const { downloadFile } = require("../src/downloader.js");
 const { createCancelToken } = require("../src/cancel-token.js");
 const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
+const { createTempDirs } = require("./helpers/temp-dirs.js");
+
+const temp = createTempDirs();
 
 const baseOpts = {
   maxRetries: 2,
@@ -18,10 +20,11 @@ const baseOpts = {
 // The active language is module-level state; reset it so tests stay independent.
 afterEach(() => {
   setLanguage(DEFAULT_LANGUAGE);
+  temp.cleanup();
 });
 
 function tmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "dl-"));
+  return temp.make("dl-");
 }
 
 describe("downloadFile", () => {

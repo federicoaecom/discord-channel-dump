@@ -2,20 +2,18 @@ const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { createHash } = require("crypto");
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 const { saveChannel, downloadMedia } = require("../../src/output/writer.js");
 const { DEFAULT_LANGUAGE, setLanguage } = require("../../src/i18n");
+const { createTempDirs } = require("../helpers/temp-dirs.js");
 
 // Every directory created by tmpDir(), removed after each test.
-const tmpDirs = [];
+const temp = createTempDirs();
 
 // The active language is module-level state; reset it so tests stay independent.
 afterEach(() => {
   setLanguage(DEFAULT_LANGUAGE);
-  for (const dir of tmpDirs.splice(0)) {
-    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-  }
+  temp.cleanup();
 });
 
 /**
@@ -23,9 +21,7 @@ afterEach(() => {
  * @returns {string} The directory path.
  */
 function tmpDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "writer-"));
-  tmpDirs.push(dir);
-  return dir;
+  return temp.make("writer-");
 }
 
 /**
