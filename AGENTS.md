@@ -31,7 +31,13 @@ This document helps future agents (and humans) get oriented in the `discord-chan
 ├── src/
 │   ├── api/discord.js      # Discord REST API calls from the Node context
 │   ├── browser/session.js  # Browser launch, token capture, DOM helpers
-│   ├── cli/backup-args.js  # CLI argument parsing and help/version output
+│   ├── cli/
+│   │   ├── backup-args.js  # CLI argument parsing and help/version output
+│   │   └── language.js     # --lang / DISCORD_LANG bootstrap shared by both bins
+│   ├── i18n/
+│   │   ├── index.js        # t(), language resolution, active language, date locales
+│   │   ├── es.js           # Spanish dictionary (default language)
+│   │   └── en.js           # English dictionary (also the fallback)
 │   ├── messages/normalize.js # Message normalization from Discord API format
 │   ├── output/writer.js    # Channel output writing and download orchestration
 │   ├── ui/                 # prompt, colors, progress, logger
@@ -44,7 +50,9 @@ This document helps future agents (and humans) get oriented in the `discord-chan
 │   ├── downloader.js       # File downloader with hard timeouts
 │   └── cancel-token.js     # Shared cancellation primitive
 ├── test/
-│   ├── <area>/             # Unit tests mirroring src/ (api, browser, cli, ...)
+│   ├── <area>/             # Unit tests mirroring src/ (api, browser, cli, i18n, ...)
+│   ├── cli/language.test.js # Language flag/env resolution in the CLI bootstrap
+│   ├── i18n/index.test.js  # t(), resolution, and es/en key and placeholder parity
 │   ├── helpers/            # Shared fixtures and subprocess helpers
 │   └── *.test.js           # Cross-cutting tests (e.g. CLI, layout, tooling)
 ├── openspec/               # Specs and archived changes (see openspec/README.md)
@@ -71,6 +79,7 @@ node bin/backup.js                       # Interactive backup
 node bin/backup.js --output ./my-backups --profile ./my-profile
 node bin/backup.js --dry-run             # Count messages without saving files
 node bin/backup.js --verbose             # Debug output
+node bin/backup.js --lang en             # English interface (default: Spanish)
 node bin/regen-html.js backups/channel-name  # Rebuild index.html for a backup
 ```
 
@@ -90,7 +99,7 @@ npm test
 - The interactive flow is the default; CLI arguments are optional overrides.
 - `backups/` and `browser-profile/` are preserved runtime directories: never remove or commit them.
 - New test files must be added to the `test` and `test:watch` scripts in `package.json`.
-- Code, docs, commits, issues, and PRs are in English; the end-user interface is in Spanish. See [Language](CONTRIBUTING.md#language).
+- Code, docs, commits, issues, and PRs are in English. The end-user interface (terminal output and the offline viewer) is Spanish by default and switchable to English with `--lang` or `DISCORD_LANG`. User-facing strings live in the dictionaries `src/i18n/es.js` and `src/i18n/en.js`, read through `t()`; `[debug]` lines stay English. See [Language](CONTRIBUTING.md#language).
 - Full rules: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Specs
