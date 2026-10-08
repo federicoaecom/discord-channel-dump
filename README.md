@@ -4,6 +4,8 @@
 
 Back up Discord text channels to your disk: every message as JSON, every image and attachment, and an offline HTML viewer. The tool drives a real Chromium window with Playwright and uses your normal Discord user session, so no bot token or admin permissions are required. The interface is in Spanish by default and can be switched to English.
 
+> **Warning:** automating a user account may violate Discord's Terms of Service (see the [Disclaimer](#disclaimer)), and this project is not affiliated with Discord.
+
 ---
 
 ## Before you start

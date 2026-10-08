@@ -4,7 +4,7 @@ Closes #N
 
 ## PR type
 
-Select exactly one option and apply the matching `type:*` label.
+Select exactly one option. A maintainer applies the matching `type:*` label; until then the "Validate governance" check fails, which is expected.
 
 - [ ] Bug fix (`type:bug`)
 - [ ] New feature (`type:feature`)
@@ -40,7 +40,7 @@ State `N/A` when this pull request is independent.
 ## Contributor checklist
 
 - [ ] The linked issue belongs to this repository and has `status:approved`
-- [ ] Exactly one PR type checkbox is selected and exactly one permitted `type:*` label is applied
+- [ ] Exactly one PR type checkbox is selected (a maintainer applies the matching `type:*` label)
 - [ ] The summary and changes table are complete and concise
 - [ ] Tests cover the change, or the test plan explains why no test applies
 - [ ] Documentation is updated when behavior or contributor workflows change

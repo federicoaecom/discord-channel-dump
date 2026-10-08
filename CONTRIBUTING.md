@@ -5,10 +5,10 @@ Thanks for taking the time to contribute. This is the single source for contribu
 ## Quick path
 
 1. Set up the project (see [Setup](#setup)).
-2. Open an issue and wait for `status:approved` (see [Submitting changes](#submitting-changes)).
+2. Open or choose an issue with `status:approved` (see [Submitting changes](#submitting-changes)).
 3. Make a focused change on a branch.
 4. Run the checks: `npm run lint`, `npm run format:check`, `npm test`.
-5. Open a pull request with the template.
+5. Open a pull request with the template and tick one PR type checkbox.
 
 ## Setup
 
@@ -53,19 +53,20 @@ Every pull request starts from an approved issue. The `PR Validation` workflow (
 
 ### Steps
 
-1. **Open an issue** with the "Work item" template. New issues get the `status:needs-review` label.
+1. **Open or choose an issue.** Use the "Bug report" or "Work item" form, or pick an existing issue. New issues get the `status:needs-review` label.
 2. **Wait for approval.** A maintainer adds `status:approved` when the work can start. Do not start before that.
 3. **Branch and commit** using [Conventional Commits](https://www.conventionalcommits.org/) (for example, `fix(media): ...` or `docs: ...`). Do not add attribution trailers.
 4. **Run the checks**: `npm run lint`, `npm run format:check`, and `npm test`.
-5. **Open the pull request** with the template in `.github/PULL_REQUEST_TEMPLATE.md`.
+5. **Open the pull request** with the template in `.github/PULL_REQUEST_TEMPLATE.md`, and tick exactly one PR type checkbox.
+6. **Wait for the type label.** A maintainer applies the matching `type:*` label. Until then, the "Validate governance" check fails. This is expected; you do not need to fix it.
 
 ### Pull request rules (enforced by CI)
 
 | Rule | Requirement |
 |------|-------------|
 | Linked issue | The PR body contains exactly one `Closes #N`, `Fixes #N`, or `Resolves #N`, and it points to an issue in this repository. |
-| Issue approval | The linked issue has the `status:approved` label. |
-| Type label | The PR has exactly one `type:*` label from this list: `type:bug`, `type:feature`, `type:docs`, `type:refactor`, `type:chore`, `type:breaking-change`. |
+| Issue approval | The linked issue has the `status:approved` label, applied by a maintainer. |
+| Type label | A maintainer applies exactly one `type:*` label that matches the ticked checkbox, from this list: `type:bug`, `type:feature`, `type:docs`, `type:refactor`, `type:chore`, `type:breaking-change`. |
 
 ### Repository conventions
 

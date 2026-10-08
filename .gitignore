@@ -15,6 +15,11 @@ browser-profile/
 
 # Environment variables
 .env
+.env.*
+
+# Private keys and certificates
+*.pem
+*.key
 
 # OS files
 .DS_Store
