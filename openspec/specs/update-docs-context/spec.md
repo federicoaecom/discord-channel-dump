@@ -69,10 +69,10 @@ The system MUST document in `README.md` and `AGENTS.md` that `backups/` and `bro
 
 ### Requirement: No Stale Path References
 
-The system MUST ensure that no documentation or SDD context file contains stale references to the old root-level module names.
+The system MUST ensure that no documentation or spec context file contains stale references to the old root-level module names.
 
 #### Scenario: Grep for old root-level references
 
 - GIVEN all docs and `openspec/config.yaml` are updated
 - WHEN a search for legacy root-level CLI commands is performed
-- THEN no matches remain in user-facing or SDD context documentation
+- THEN no matches remain in user-facing or spec context documentation
