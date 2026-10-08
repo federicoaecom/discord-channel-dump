@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Upgrade notes
+
+- **Existing backups download their media again.** Media filenames changed in 2.0.0 (SHA-256 URL suffixes) and change again in this release: the suffix now comes from a canonical identity that ignores the rotating Discord CDN `ex`/`is`/`hm` parameters. Re-running a backup on an existing channel folder downloads its images and attachments again under the new names.
+- **Old files stay on disk.** A re-run rewrites `messages.json` and `index.html` from the freshly fetched messages, so both reference only the new filenames. The tool never deletes files, so media saved under the old names remains in `images/` and `attachments/` but is no longer referenced.
+- **Check before deleting old files.** A failed download (for example, an expired CDN link) leaves that message without a local copy in the new output, and messages deleted on Discord since the last run are no longer in `messages.json`. In both cases the old file may be the only copy. Keep a copy of the channel folder until the re-run reports `0 failed` for images and attachments and you have confirmed nothing you need is missing.
+- Backups that you do not re-run keep working: their `messages.json` and `index.html` still reference the old filenames.
+
 ### Fixed
 
 - Stabilized media filename identity: rotating Discord CDN `ex`/`is`/`hm` signatures reuse the same file, while meaningful query parameters keep resources distinct.
@@ -47,5 +54,6 @@ All notable changes to this project will be documented in this file.
 
 - Project layout moved from flat scripts to `src/` and `bin/`.
 
+[Unreleased]: https://github.com/federicoaecom/discord-channel-dump/compare/v2.0.0...HEAD
 [2.0.0]: https://github.com/federicoaecom/discord-channel-dump/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/federicoaecom/discord-channel-dump/releases/tag/v1.0.0

@@ -110,3 +110,5 @@ This document helps future agents (and humans) get oriented in the `discord-chan
 - The interactive backup flow is the default; CLI arguments are optional overrides.
 - Do not add new runtime dependencies without a design discussion.
 - `backups/` and `browser-profile/` are preserved runtime directories and are never removed by source cleanup or restructuring.
+- Language: code, comments, docs, commits, issues, and PRs are in English. The end-user UI (the offline viewer) is in Spanish. `README.md` is the source of truth and `README.es.md` is its Spanish translation; update both when practical.
+- Follow the issue-first PR workflow, labels, and test-script registration rules in [CONTRIBUTING.md](CONTRIBUTING.md#submitting-changes).

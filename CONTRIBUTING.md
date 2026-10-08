@@ -36,10 +36,41 @@ npm run format
 
 ## Submitting changes
 
-1. Make sure your branch passes `npm run lint`, `npm run format:check`, and `npm test`.
-2. Keep changes focused on one concern per pull request.
-3. Avoid adding new runtime dependencies unless there is a design discussion first.
-4. Update docs (`README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`) when behavior changes.
+Every pull request starts from an approved issue. The `PR Validation` workflow (`.github/workflows/pr-validation.yml`) blocks pull requests that skip these steps.
+
+### Quick path
+
+1. **Open an issue** with the "Work item" template. New issues get the `status:needs-review` label.
+2. **Wait for approval.** A maintainer adds `status:approved` when the work can start. Do not start before that.
+3. **Branch and commit** using [Conventional Commits](https://www.conventionalcommits.org/) (for example, `fix(media): ...` or `docs: ...`). Do not add attribution trailers.
+4. **Run the checks**: `npm run lint`, `npm run format:check`, and `npm test`.
+5. **Open the pull request** with the template in `.github/PULL_REQUEST_TEMPLATE.md`.
+
+### Pull request rules (enforced by CI)
+
+| Rule | Requirement |
+|------|-------------|
+| Linked issue | The PR body contains exactly one `Closes #N`, `Fixes #N`, or `Resolves #N`, and it points to an issue in this repository. |
+| Issue approval | The linked issue has the `status:approved` label. |
+| Type label | The PR has exactly one `type:*` label from this list: `type:bug`, `type:feature`, `type:docs`, `type:refactor`, `type:chore`, `type:breaking-change`. |
+
+### Repository conventions
+
+- Keep changes focused on one concern per pull request.
+- Avoid adding new runtime dependencies unless there is a design discussion first.
+- Add user-visible changes to the `[Unreleased]` section of `CHANGELOG.md`.
+- Update docs (`README.md`, `README.es.md`, `CHANGELOG.md`, `CONTRIBUTING.md`) when behavior changes.
+- **New test files**: add each new file to both the `test` and `test:watch` scripts in `package.json`. Both scripts list test files explicitly, so a file that is not listed does not run.
+
+## Language
+
+| Area | Language |
+|------|----------|
+| Code, comments, documentation, commits, issues, and pull requests | English |
+| End-user interface (the offline viewer) | Spanish |
+| `README.es.md` | Spanish translation of `README.md` |
+
+`README.md` is the source of truth. When you change it, update `README.es.md` too when practical.
 
 ## License
 
