@@ -2,7 +2,7 @@ schema: spec-driven
 
 project:
   name: discord-channel-dump
-  path: E:\\ECOM\\DISCORD-BACKUP
+  path: .
 
 context: |
   Node.js CLI utility (discord-channel-dump) that backs up Discord text channels via Playwright browser automation.
