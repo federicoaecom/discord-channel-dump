@@ -15,7 +15,7 @@ const { downloadFile } = require("../downloader");
 const { isCancelError } = require("../cancel-token");
 const { green, yellow, dim } = require("../ui/colors");
 const logger = require("../ui/logger");
-const { t } = require("../i18n");
+const { t, getLanguage } = require("../i18n");
 const { renderProgressBar } = require("../ui/progress");
 
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
@@ -210,7 +210,7 @@ async function saveChannel(
   );
   fs.writeFileSync(
     path.join(channelDir, "index.html"),
-    generateHtml(channelName, messages),
+    generateHtml(channelName, messages, { lang: getLanguage() }),
     "utf8"
   );
 

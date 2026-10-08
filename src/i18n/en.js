@@ -122,4 +122,14 @@ module.exports = Object.freeze({
   "config.positiveInteger": "{field} must be a positive integer.",
   "config.boolean": "{field} must be a boolean.",
   "config.oneOf": "{field} must be one of: {values}.",
+
+  // src/viewer/render.js and src/templates/viewer.html (offline viewer).
+  "viewer.title": "Backup — #{channel}",
+  "viewer.messageCount.one": "{count} message",
+  "viewer.messageCount.other": "{count} messages",
+  "viewer.searchPlaceholder": "Search the chat…",
+  "viewer.dateFrom": "From",
+  "viewer.dateTo": "To",
+  "viewer.clear": "✕ Clear",
+  "viewer.imageAlt": "image",
 });

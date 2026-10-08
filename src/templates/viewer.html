@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{LANG}}">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; frame-src 'none';">
-<title>Backup — #{{CHANNEL_NAME}}</title>
+<title>{{TITLE}}</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:#1e1f22;color:#dbdee1;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5}
@@ -43,23 +43,23 @@ mark{background:rgba(250,166,26,.25);color:#fde68a;border-radius:2px;padding:0 1
 <body>
 <header>
   <h1>#{{CHANNEL_NAME}}</h1>
-  <span class="header-meta">{{MESSAGE_COUNT}} msgs &mdash; {{GENERATED_AT}}</span>
+  <span class="header-meta">{{MESSAGE_COUNT_LABEL}} &mdash; {{GENERATED_AT}}</span>
 
   <div class="search-wrap">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dbdee1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
     </svg>
-    <input id="search" type="search" placeholder="Buscar en el chat…" autocomplete="off" spellcheck="false">
+    <input id="search" type="search" placeholder="{{SEARCH_PLACEHOLDER}}" autocomplete="off" spellcheck="false">
   </div>
 
   <div class="date-wrap">
-    <label for="date-from">Desde</label>
+    <label for="date-from">{{DATE_FROM_LABEL}}</label>
     <input id="date-from" type="date" min="{{MIN_DATE}}" max="{{MAX_DATE}}">
-    <label for="date-to">Hasta</label>
+    <label for="date-to">{{DATE_TO_LABEL}}</label>
     <input id="date-to"   type="date" min="{{MIN_DATE}}" max="{{MAX_DATE}}">
   </div>
 
-  <button id="clear-btn">✕ Limpiar</button>
+  <button id="clear-btn">{{CLEAR_LABEL}}</button>
   <span id="search-count"></span>
 </header>
 <div class="container">

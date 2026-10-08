@@ -74,7 +74,8 @@ describe("generateHtml", () => {
   it("renders the template with an empty message list", () => {
     const html = generateHtml("test-channel", []);
     assert.match(html, /#test-channel/);
-    assert.match(html, /0 msgs/);
+    assert.match(html, /0 mensajes &mdash; /);
+    assert.doesNotMatch(html, /\d msgs/);
     assert.doesNotMatch(html, /\{\{CHANNEL_NAME\}\}/);
     assert.doesNotMatch(html, /\{\{MESSAGE_COUNT\}\}/);
     assert.doesNotMatch(html, /\{\{ROWS\}\}/);

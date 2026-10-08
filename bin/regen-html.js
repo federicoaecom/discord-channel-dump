@@ -21,7 +21,7 @@ const fs = require("fs");
 const path = require("path");
 const pkg = require("../package.json");
 const logger = require("../src/ui/logger");
-const { t } = require("../src/i18n");
+const { t, getLanguage } = require("../src/i18n");
 const {
   LANG_OPTION,
   applyLanguage,
@@ -137,7 +137,8 @@ async function main(argv) {
 
   const channelName = path.basename(path.resolve(target));
 
-  fs.writeFileSync(htmlPath, generateHtml(channelName, messages), "utf8");
+  // The viewer uses the language applied above (--lang, then DISCORD_LANG).
+  fs.writeFileSync(htmlPath, generateHtml(channelName, messages, { lang: getLanguage() }), "utf8");
   logger.info(`  ${t("cli.regen.done", { path: htmlPath, count: messages.length })}`);
 }
 

@@ -120,6 +120,22 @@ describe("saveChannel", () => {
     assert.equal(result.channelDir, channelDir);
   });
 
+  it("writes index.html in the active language (English)", async () => {
+    const dir = tmpDir();
+    try {
+      const messages = [{ msgId: "1", timestamp: "2024-01-01T12:00:00.000Z", text: "hi" }];
+      await captureStdout(() =>
+        saveChannel("viewer-en", messages, { backupDir: dir }, null, fakeDownloadMedia)
+      );
+      const html = fs.readFileSync(path.join(dir, "viewer-en", "index.html"), "utf8");
+      assert.match(html, /<html lang="en">/);
+      assert.match(html, /placeholder="Search the chat…"/);
+      assert.match(html, /<span class="header-meta">1 message &mdash; /);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("sanitizes the channel name for the directory", async () => {
     const dir = tmpDir();
     const config = { backupDir: dir };
@@ -532,6 +548,22 @@ describe("writer output in the default language (Spanish)", () => {
 
     assert.match(output, /\n {2}\[omitido img\] network error\n/);
     assert.match(output, /\n {2}\[omitido adj\] network error\n/);
+  });
+
+  it("writes index.html in Spanish", async () => {
+    const dir = tmpDir();
+    try {
+      const messages = [{ msgId: "1", timestamp: "2024-01-01T12:00:00.000Z", text: "hola" }];
+      await captureStdout(() =>
+        saveChannel("visor-es", messages, { backupDir: dir }, null, async () => {})
+      );
+      const html = fs.readFileSync(path.join(dir, "visor-es", "index.html"), "utf8");
+      assert.match(html, /<html lang="es">/);
+      assert.match(html, /placeholder="Buscar en el chat…"/);
+      assert.match(html, /<span class="header-meta">1 mensaje &mdash; /);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("prints the folder, saved summary, and output lines in Spanish", async () => {

@@ -496,6 +496,44 @@ describe("CLI smoke tests", () => {
     assert.match(spanish.stdout, /^ {2}Listo: .*index\.html {2}\(0 mensajes\)/);
   });
 
+  it("regen-html.js writes the viewer in the selected language", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-viewer-"));
+    const ts = "2024-03-15T14:32:00.000Z";
+    const messages = [{ msgId: "1", timestamp: ts, author: "Alice", text: "hi" }];
+    fs.writeFileSync(path.join(dir, "messages.json"), JSON.stringify(messages), "utf8");
+    const htmlPath = path.join(dir, "index.html");
+    const regenerate = (args, extraEnv) => {
+      const result = runCli(regenPath, [...args, dir], extraEnv);
+      assert.equal(result.status, 0, result.stderr);
+      return fs.readFileSync(htmlPath, "utf8");
+    };
+
+    try {
+      const english = regenerate(["--lang", "en"]);
+      assert.match(english, /<html lang="en">/);
+      assert.match(english, /placeholder="Search the chat…"/);
+      assert.match(english, /<button id="clear-btn">✕ Clear<\/button>/);
+      assert.match(english, /<span class="header-meta">1 message &mdash; /);
+      const englishDate = new Date(ts).toLocaleString("en-US");
+      assert.ok(english.includes(`<span class="date">${englishDate}</span>`), englishDate);
+
+      assert.match(regenerate([], { DISCORD_LANG: "en" }), /<html lang="en">/);
+
+      const spanish = regenerate([]);
+      assert.match(spanish, /<html lang="es">/);
+      assert.match(spanish, /placeholder="Buscar en el chat…"/);
+      assert.match(spanish, /<span class="header-meta">1 mensaje &mdash; /);
+      const spanishDate = new Date(ts).toLocaleString("es-AR");
+      assert.ok(spanish.includes(`<span class="date">${spanishDate}</span>`), spanishDate);
+      assert.deepEqual(
+        JSON.parse(fs.readFileSync(path.join(dir, "messages.json"), "utf8")),
+        messages
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("backup.js prints a friendly config error in the selected language and exits 1", () => {
     const script = `
       const configPath = require.resolve("./src/config");
