@@ -1,6 +1,5 @@
 const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("fs");
 const pkg = require("../package.json");
 const logger = require("../src/ui/logger");
 const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
@@ -436,40 +435,36 @@ describe("runBrowserSession language", () => {
         let closed = false;
         let saves = 0;
 
-        try {
-          await runBrowserSession({ backupDir: dir, profileDir: dir }, null, {
-            launchBrowser: async () => ({
-              context: {
-                close: () => {
-                  closed = true;
-                  return Promise.resolve();
-                },
+        await runBrowserSession({ backupDir: dir, profileDir: dir }, null, {
+          launchBrowser: async () => ({
+            context: {
+              close: () => {
+                closed = true;
+                return Promise.resolve();
               },
-              page: { goto: async () => {}, evaluate: async () => null },
-              session: { getToken: () => "token" },
-            }),
-            createPrompt: () => ({
-              prompt: (question) => {
-                questions.push(question);
-                if (questions.length > 1) throw new Error(`"${typedWord}" did not quit`);
-                return typedWord;
-              },
-              close: () => {},
-            }),
-            saveChannel: async () => {
-              saves++;
             },
-            logger: {
-              info: () => {},
-              error: () => {},
-              warn: () => {},
-              debug: () => {},
-              write: () => {},
+            page: { goto: async () => {}, evaluate: async () => null },
+            session: { getToken: () => "token" },
+          }),
+          createPrompt: () => ({
+            prompt: (question) => {
+              questions.push(question);
+              if (questions.length > 1) throw new Error(`"${typedWord}" did not quit`);
+              return typedWord;
             },
-          });
-        } finally {
-          fs.rmSync(dir, { recursive: true, force: true });
-        }
+            close: () => {},
+          }),
+          saveChannel: async () => {
+            saves++;
+          },
+          logger: {
+            info: () => {},
+            error: () => {},
+            warn: () => {},
+            debug: () => {},
+            write: () => {},
+          },
+        });
 
         assert.equal(questions.length, 1, questions.join("\n"));
         assert.ok(questions[0].includes(`"${shownWord}"`), questions[0]);

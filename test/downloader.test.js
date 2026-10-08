@@ -226,7 +226,6 @@ async function downloadError(route, options = {}) {
   } finally {
     server.closeAllConnections();
     await stopServer(server);
-    fs.rmSync(dir, { recursive: true, force: true });
   }
   throw new Error("expected the download to fail");
 }

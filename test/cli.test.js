@@ -501,20 +501,16 @@ describe("CLI smoke tests", () => {
 
   it("regen-html.js uses the singular for a single message in the selected language", () => {
     const dir = temp.make("regen-one-");
-    try {
-      const messages = [{ msgId: "1", timestamp: "2024-03-15T14:32:00.000Z", text: "hi" }];
-      fs.writeFileSync(path.join(dir, "messages.json"), JSON.stringify(messages), "utf8");
+    const messages = [{ msgId: "1", timestamp: "2024-03-15T14:32:00.000Z", text: "hi" }];
+    fs.writeFileSync(path.join(dir, "messages.json"), JSON.stringify(messages), "utf8");
 
-      const english = runCli(regenPath, ["--lang", "en", dir]);
-      assert.equal(english.status, 0, english.stderr);
-      assert.match(english.stdout, /^ {2}Done: .*index\.html {2}\(1 message\)\r?\n$/);
+    const english = runCli(regenPath, ["--lang", "en", dir]);
+    assert.equal(english.status, 0, english.stderr);
+    assert.match(english.stdout, /^ {2}Done: .*index\.html {2}\(1 message\)\r?\n$/);
 
-      const spanish = runCli(regenPath, [dir]);
-      assert.equal(spanish.status, 0, spanish.stderr);
-      assert.match(spanish.stdout, /^ {2}Listo: .*index\.html {2}\(1 mensaje\)\r?\n$/);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    const spanish = runCli(regenPath, [dir]);
+    assert.equal(spanish.status, 0, spanish.stderr);
+    assert.match(spanish.stdout, /^ {2}Listo: .*index\.html {2}\(1 mensaje\)\r?\n$/);
   });
 
   it("regen-html.js writes the viewer in the selected language", () => {
@@ -529,30 +525,26 @@ describe("CLI smoke tests", () => {
       return fs.readFileSync(htmlPath, "utf8");
     };
 
-    try {
-      const english = regenerate(["--lang", "en"]);
-      assert.match(english, /<html lang="en">/);
-      assert.match(english, /placeholder="Search the chat…"/);
-      assert.match(english, /<button id="clear-btn">✕ Clear<\/button>/);
-      assert.match(english, /<span class="header-meta">1 message &mdash; /);
-      const englishDate = new Date(ts).toLocaleString("en-US");
-      assert.ok(english.includes(`<span class="date">${englishDate}</span>`), englishDate);
+    const english = regenerate(["--lang", "en"]);
+    assert.match(english, /<html lang="en">/);
+    assert.match(english, /placeholder="Search the chat…"/);
+    assert.match(english, /<button id="clear-btn">✕ Clear<\/button>/);
+    assert.match(english, /<span class="header-meta">1 message &mdash; /);
+    const englishDate = new Date(ts).toLocaleString("en-US");
+    assert.ok(english.includes(`<span class="date">${englishDate}</span>`), englishDate);
 
-      assert.match(regenerate([], { DISCORD_LANG: "en" }), /<html lang="en">/);
+    assert.match(regenerate([], { DISCORD_LANG: "en" }), /<html lang="en">/);
 
-      const spanish = regenerate([]);
-      assert.match(spanish, /<html lang="es">/);
-      assert.match(spanish, /placeholder="Buscar en el chat…"/);
-      assert.match(spanish, /<span class="header-meta">1 mensaje &mdash; /);
-      const spanishDate = new Date(ts).toLocaleString("es-AR");
-      assert.ok(spanish.includes(`<span class="date">${spanishDate}</span>`), spanishDate);
-      assert.deepEqual(
-        JSON.parse(fs.readFileSync(path.join(dir, "messages.json"), "utf8")),
-        messages
-      );
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    const spanish = regenerate([]);
+    assert.match(spanish, /<html lang="es">/);
+    assert.match(spanish, /placeholder="Buscar en el chat…"/);
+    assert.match(spanish, /<span class="header-meta">1 mensaje &mdash; /);
+    const spanishDate = new Date(ts).toLocaleString("es-AR");
+    assert.ok(spanish.includes(`<span class="date">${spanishDate}</span>`), spanishDate);
+    assert.deepEqual(
+      JSON.parse(fs.readFileSync(path.join(dir, "messages.json"), "utf8")),
+      messages
+    );
   });
 
   it("backup.js prints a friendly config error in the selected language and exits 1", () => {
