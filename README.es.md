@@ -6,6 +6,8 @@
 
 Copias de seguridad de canales de texto de Discord en el disco: todos los mensajes en JSON, todas las imágenes y los adjuntos, y un visor HTML sin conexión. La herramienta controla una ventana real de Chromium con Playwright y usa la sesión normal de usuario de Discord, por lo que no requiere un token de bot ni permisos de administrador. La interfaz está en español de forma predeterminada y se puede cambiar a inglés.
 
+> **Advertencia:** automatizar una cuenta de usuario puede infringir los Términos de servicio de Discord (consulte el [Aviso legal](#aviso-legal)), y este proyecto no está afiliado a Discord.
+
 ---
 
 ## Antes de empezar
