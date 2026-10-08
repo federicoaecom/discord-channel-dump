@@ -28,28 +28,35 @@ The workflow MUST run on Node.js versions matching `engines.node` in `package.js
 
 ### Requirement: CI Steps
 
-The workflow MUST run the following steps: checkout the repository, install dependencies, run lint, run format check, and run tests.
+The workflow MUST run the following steps: checkout the repository, install dependencies with `npm ci`, install Playwright Chromium, run lint, run format check, and run tests. On the Node.js 20.19.0 matrix entry only, it MUST also audit production dependencies and smoke-test the packed CLI.
 
 #### Scenario: Pull request workflow
 
 - GIVEN a pull request is opened against the default branch
 - WHEN the workflow runs
-- THEN it executes `npm install`, `npm run lint`, `npm run format:check`, and `npm test` sequentially
+- THEN it executes `npm ci`, `npx playwright install chromium`, `npm run lint`, `npm run format:check`, and `npm test` sequentially
 - AND the job fails if any step exits with a non-zero code
 
-### Requirement: Inactive Until Git Push
+#### Scenario: Audit and package smoke test
 
-The workflow file is intentionally shipped before the project is a git repository. The project documentation or workflow comments MUST note that the workflow only runs after `git init`, a remote is configured, and code is pushed to GitHub.
+- GIVEN the workflow runs on the Node.js 20.19.0 matrix entry
+- WHEN the job executes
+- THEN it runs `npm audit --omit=dev` after `npm ci`
+- AND after the tests it packs the project with `npm pack`, installs the tarball globally into a temporary prefix, and checks that `discord-channel-dump --help` prints `Usage:` and `discord-channel-dump --version` matches `package.json`
 
-#### Scenario: Local only environment
+### Requirement: Push and Pull Request Triggers
 
-- GIVEN the project is not initialized as a git repository
-- WHEN a developer reads the CI file or related docs
-- THEN it is clear that the workflow is a future-ready artifact that becomes active only after pushing to GitHub
+The workflow MUST run on pushes and on pull requests.
+
+#### Scenario: Pull request opened
+
+- GIVEN a contributor opens a pull request
+- WHEN GitHub evaluates workflow triggers
+- THEN the CI workflow runs on that pull request
 
 ### Requirement: No Browser Secrets in CI
 
-The workflow MUST NOT require Discord credentials, Playwright browser secrets, or live API keys for the tests to pass. Tests run in CI MUST be limited to lint, format, and smoke/unit tests.
+The workflow MUST NOT require Discord credentials, Playwright browser secrets, or live API keys for the tests to pass. Tests run in CI are lint, the format check, and the automated test suite, which MAY launch a local headless browser but MUST NOT need live Discord access.
 
 #### Scenario: Public fork run
 

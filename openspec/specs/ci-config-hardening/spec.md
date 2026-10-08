@@ -16,7 +16,7 @@
 
 ### Requirement: Run CI on every supported Node.js release line
 
-CI MUST run Node `20.x`, `22.x`, and `24.x`.
+CI MUST run Node `20.19.0`, `22.13.0`, and `24.x`.
 
 ### Requirement: Exclude unsupported Node 18
 
@@ -24,7 +24,7 @@ Node 18 is intentionally unsupported and MUST NOT appear in the engine range or 
 
 #### Scenario: Supported Node.js baseline
 
-Given the package metadata and CI workflow, when the supported runtime baseline is inspected, then the engine range is `^20.19.0 || ^22.13.0 || >=24` and the CI matrix contains `20.x`, `22.x`, and `24.x` without Node 18.
+Given the package metadata and CI workflow, when the supported runtime baseline is inspected, then the engine range is `^20.19.0 || ^22.13.0 || >=24` and the CI matrix contains `20.19.0`, `22.13.0`, and `24.x` without Node 18.
 
 ### Requirement: Reject invalid maxRetries
 
