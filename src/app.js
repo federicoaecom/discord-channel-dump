@@ -14,14 +14,15 @@ const { ensureDir } = require("./utils/fs");
 const { createPrompt, isPromptClosedError } = require("./ui/prompt");
 const { cyan, yellow, dim } = require("./ui/colors");
 const logger = require("./ui/logger");
-const { t } = require("./i18n");
+const { t, translationsOf } = require("./i18n");
 const { launchBrowser, getChannelId, getChannelNameFromDom } = require("./browser/session");
 const { getChannelName, fetchAllMessages } = require("./api/discord");
 const { normalizeMessage } = require("./messages/normalize");
 const { saveChannel } = require("./output/writer");
 
 // Accepted in every interface language so the quit word never depends on --lang.
-const EXIT_COMMANDS = new Set(["exit", "salir"]);
+// The prompt shows the active language's word from the same dictionary key.
+const EXIT_COMMANDS = new Set(translationsOf("app.exitCommand").map((w) => w.toLowerCase()));
 
 let currentContext = null;
 let shutdownRegistered = false;
@@ -141,7 +142,7 @@ async function runBrowserSession(config, cancelToken, deps = DEFAULT_DEPS) {
 
   try {
     while (true) {
-      const cmd = await prompt(`  > ${t("app.prompt.capture")}`);
+      const cmd = await prompt(`  > ${t("app.prompt.capture", { exit: t("app.exitCommand") })}`);
       if (EXIT_COMMANDS.has(cmd.trim().toLowerCase())) break;
 
       const token = session.getToken();

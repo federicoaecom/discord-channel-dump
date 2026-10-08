@@ -1,9 +1,15 @@
-const { describe, it } = require("node:test");
+const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const config = require("../src/config.js");
 const { validateConfig, ConfigError, loadConfig } = config;
+const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
+
+// The active language is module-level state; reset it so tests stay independent.
+afterEach(() => {
+  setLanguage(DEFAULT_LANGUAGE);
+});
 
 function makeCfg(overrides = {}) {
   return {
@@ -44,6 +50,11 @@ describe("loadConfig", () => {
 });
 
 describe("validateConfig", () => {
+  // These tests assert the English text; the Spanish default is covered below.
+  beforeEach(() => {
+    setLanguage("en");
+  });
+
   it("accepts a fully valid configuration", () => {
     assert.doesNotThrow(() => validateConfig(makeCfg()));
   });
@@ -209,6 +220,88 @@ describe("language default", () => {
         { defaults: "es", loaded: "es", topLevel: "es" },
         `DISCORD_LANG=${value}`
       );
+    }
+  });
+});
+
+describe("validateConfig messages", () => {
+  // Every ConfigError, with the exact English text and its Spanish translation.
+  // Config field identifiers stay untranslated in both languages.
+  const cases = [
+    [null, "Configuration must be an object.", "La configuración debe ser un objeto."],
+    [
+      makeCfg({ backupDir: "" }),
+      "backupDir must be a non-empty string.",
+      "backupDir debe ser una cadena no vacía.",
+    ],
+    [
+      makeCfg({ profileDir: 1 }),
+      "profileDir must be a non-empty string.",
+      "profileDir debe ser una cadena no vacía.",
+    ],
+    [
+      makeCfg({ apiBatchSize: 0 }),
+      "apiBatchSize must be an integer between 1 and 100",
+      "apiBatchSize debe ser un número entero entre 1 y 100",
+    ],
+    [
+      makeCfg({ apiDelayMs: -1 }),
+      "apiDelayMs must be a non-negative number.",
+      "apiDelayMs debe ser un número no negativo.",
+    ],
+    [
+      makeCfg({ downloadTimeoutMs: 0 }),
+      "downloadTimeoutMs must be a positive number.",
+      "downloadTimeoutMs debe ser un número positivo.",
+    ],
+    [
+      makeCfg({ maxRetries: 0 }),
+      "maxRetries must be a positive integer.",
+      "maxRetries debe ser un número entero positivo.",
+    ],
+    [
+      makeCfg({ maxRedirects: 1.5 }),
+      "maxRedirects must be a positive integer.",
+      "maxRedirects debe ser un número entero positivo.",
+    ],
+    [
+      makeCfg({ retryDelayMs: -1 }),
+      "retryDelayMs must be a non-negative number.",
+      "retryDelayMs debe ser un número no negativo.",
+    ],
+    [
+      makeCfg({ jitterMaxMs: -1 }),
+      "jitterMaxMs must be a non-negative number.",
+      "jitterMaxMs debe ser un número no negativo.",
+    ],
+    [makeCfg({ dryRun: "yes" }), "dryRun must be a boolean.", "dryRun debe ser un valor booleano."],
+    [
+      makeCfg({ language: "fr" }),
+      "language must be one of: es, en.",
+      "language debe ser uno de estos valores: es, en.",
+    ],
+  ];
+
+  function messageOf(cfg) {
+    try {
+      validateConfig(cfg);
+    } catch (error) {
+      assert.ok(error instanceof ConfigError);
+      return error.message;
+    }
+    assert.fail("expected a ConfigError");
+  }
+
+  it("keeps every English message byte-identical", () => {
+    setLanguage("en");
+    for (const [cfg, english] of cases) {
+      assert.equal(messageOf(cfg), english);
+    }
+  });
+
+  it("translates every message to Spanish by default", () => {
+    for (const [cfg, , spanish] of cases) {
+      assert.equal(messageOf(cfg), spanish);
     }
   });
 });

@@ -5,7 +5,7 @@
 "use strict";
 
 const path = require("path");
-const { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } = require("./i18n");
+const { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, t } = require("./i18n");
 
 const defaults = {
   // Directory where backups will be stored
@@ -48,49 +48,60 @@ class ConfigError extends Error {
 }
 
 /**
+ * Build a ConfigError whose message uses the active language.
+ * Config field names are passed as `field` and stay untranslated.
+ * @param {string} key - i18n message key under `config.`.
+ * @param {Record<string, unknown>} [params] - Placeholder values.
+ * @returns {ConfigError} The error to throw.
+ */
+function configError(key, params) {
+  return new ConfigError(t(key, params));
+}
+
+/**
  * Validates a configuration object. Throws ConfigError on invalid values.
  */
 function validateConfig(config) {
   if (!config || typeof config !== "object") {
-    throw new ConfigError("Configuration must be an object.");
+    throw configError("config.notObject");
   }
 
-  if (typeof config.backupDir !== "string" || config.backupDir.length === 0) {
-    throw new ConfigError("backupDir must be a non-empty string.");
-  }
-  if (typeof config.profileDir !== "string" || config.profileDir.length === 0) {
-    throw new ConfigError("profileDir must be a non-empty string.");
+  for (const field of ["backupDir", "profileDir"]) {
+    if (typeof config[field] !== "string" || config[field].length === 0) {
+      throw configError("config.nonEmptyString", { field });
+    }
   }
   if (
     !Number.isInteger(config.apiBatchSize) ||
     config.apiBatchSize <= 0 ||
     config.apiBatchSize > 100
   ) {
-    throw new ConfigError("apiBatchSize must be an integer between 1 and 100");
+    throw configError("config.integerRange", { field: "apiBatchSize", min: 1, max: 100 });
   }
   if (!Number.isFinite(config.apiDelayMs) || config.apiDelayMs < 0) {
-    throw new ConfigError("apiDelayMs must be a non-negative number.");
+    throw configError("config.nonNegativeNumber", { field: "apiDelayMs" });
   }
   if (!Number.isFinite(config.downloadTimeoutMs) || config.downloadTimeoutMs <= 0) {
-    throw new ConfigError("downloadTimeoutMs must be a positive number.");
+    throw configError("config.positiveNumber", { field: "downloadTimeoutMs" });
   }
-  if (!Number.isInteger(config.maxRetries) || config.maxRetries <= 0) {
-    throw new ConfigError("maxRetries must be a positive integer.");
+  for (const field of ["maxRetries", "maxRedirects"]) {
+    if (!Number.isInteger(config[field]) || config[field] <= 0) {
+      throw configError("config.positiveInteger", { field });
+    }
   }
-  if (!Number.isInteger(config.maxRedirects) || config.maxRedirects <= 0) {
-    throw new ConfigError("maxRedirects must be a positive integer.");
-  }
-  if (!Number.isFinite(config.retryDelayMs) || config.retryDelayMs < 0) {
-    throw new ConfigError("retryDelayMs must be a non-negative number.");
-  }
-  if (!Number.isFinite(config.jitterMaxMs) || config.jitterMaxMs < 0) {
-    throw new ConfigError("jitterMaxMs must be a non-negative number.");
+  for (const field of ["retryDelayMs", "jitterMaxMs"]) {
+    if (!Number.isFinite(config[field]) || config[field] < 0) {
+      throw configError("config.nonNegativeNumber", { field });
+    }
   }
   if (typeof config.dryRun !== "boolean") {
-    throw new ConfigError("dryRun must be a boolean.");
+    throw configError("config.boolean", { field: "dryRun" });
   }
   if (!SUPPORTED_LANGUAGES.includes(config.language)) {
-    throw new ConfigError(`language must be one of: ${SUPPORTED_LANGUAGES.join(", ")}.`);
+    throw configError("config.oneOf", {
+      field: "language",
+      values: SUPPORTED_LANGUAGES.join(", "),
+    });
   }
 }
 

@@ -11,6 +11,7 @@ const http = require("http");
 const path = require("path");
 const config = require("./config");
 const { createCancelError } = require("./cancel-token");
+const { t } = require("./i18n");
 
 function isRetryableStatus(status) {
   return status >= 500 || status === 429;
@@ -94,7 +95,8 @@ function downloadFile(rawUrl, destPath, options = {}) {
 
     if (cancelToken) {
       cancelToken.onCancel(() => {
-        settle(createCancelError("Download cancelled"));
+        // Callers detect cancellation by identity (isCancelError), never by this text.
+        settle(createCancelError(t("downloader.cancelled")));
       });
     }
 
@@ -134,11 +136,11 @@ function downloadFile(rawUrl, destPath, options = {}) {
           res.resume();
           const location = res.headers.location;
           if (!location) {
-            settle(new Error(`Redirect without Location — ${url}`));
+            settle(new Error(t("downloader.redirectWithoutLocation", { url })));
             return;
           }
           if (redirectCount >= maxRedirects) {
-            settle(new Error(`Too many redirects — ${url}`));
+            settle(new Error(t("downloader.tooManyRedirects", { url })));
             return;
           }
           redirectCount++;
@@ -154,7 +156,7 @@ function downloadFile(rawUrl, destPath, options = {}) {
             setTimeout(() => attemptGet(currentUrl), retryDelay());
             return;
           }
-          settle(new Error(`HTTP ${res.statusCode} — ${url}`));
+          settle(new Error(t("downloader.httpStatus", { status: res.statusCode, url })));
           return;
         }
 
@@ -176,7 +178,7 @@ function downloadFile(rawUrl, destPath, options = {}) {
       });
 
       activeReq.setTimeout(timeoutMs, () => {
-        activeReq.destroy(new Error(`Timeout (>${timeoutMs / 1000}s) — ${url}`));
+        activeReq.destroy(new Error(t("downloader.timeout", { seconds: timeoutMs / 1000, url })));
       });
     }
 

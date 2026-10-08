@@ -8,7 +8,7 @@ const pkg = require("../../package.json");
 
 const logger = require("../ui/logger");
 const { t } = require("../i18n");
-const { languageHelpParams } = require("./language");
+const { LANG_OPTION, languageHelpParams } = require("./language");
 
 /**
  * Print the CLI help message in the active language.
@@ -25,12 +25,28 @@ function printVersion() {
 }
 
 /**
+ * Options that take the next argument as their value, mapped to the result key
+ * they fill. bin/backup.js passes the keys to `findLangFlag()` so it skips
+ * option values exactly like this parser does.
+ */
+const VALUE_OPTIONS = Object.freeze({
+  "--output": "output",
+  "-o": "output",
+  "--profile": "profile",
+  "-p": "profile",
+  [LANG_OPTION]: "lang",
+});
+
+/**
  * Parse command-line arguments for bin/backup.js.
  * @param {string[]} argv - Raw CLI arguments (excluding node and script path).
  * @returns {{ help: boolean, version: boolean, verbose: boolean, dryRun: boolean, output?: string, profile?: string, lang?: string } | { error: string }}
  *   Parsed options or an error object whose message uses the active language.
- *   `lang` is the raw `--lang` value; it is validated by `resolveLanguage` in
- *   src/i18n.
+ *   `lang` is the raw `--lang` value. The entry point does not read it: it
+ *   applies the language before parsing, with `findLangFlag()` and the same
+ *   `VALUE_OPTIONS`, so even argument errors are translated. Both always agree
+ *   when parsing succeeds. The parser still accepts `--lang` so the option and
+ *   its value are consumed instead of reported as unknown or unexpected.
  */
 function parseCliArgs(argv) {
   const result = { help: false, version: false, verbose: false, dryRun: false };
@@ -45,21 +61,11 @@ function parseCliArgs(argv) {
       result.verbose = true;
     } else if (arg === "--dry-run") {
       result.dryRun = true;
-    } else if (arg === "--output" || arg === "-o") {
+    } else if (Object.hasOwn(VALUE_OPTIONS, arg)) {
       if (i + 1 >= argv.length) {
         return { error: t("cli.args.missingValue", { option: arg }) };
       }
-      result.output = argv[++i];
-    } else if (arg === "--profile" || arg === "-p") {
-      if (i + 1 >= argv.length) {
-        return { error: t("cli.args.missingValue", { option: arg }) };
-      }
-      result.profile = argv[++i];
-    } else if (arg === "--lang") {
-      if (i + 1 >= argv.length) {
-        return { error: t("cli.args.missingValue", { option: arg }) };
-      }
-      result.lang = argv[++i];
+      result[VALUE_OPTIONS[arg]] = argv[++i];
     } else if (arg.startsWith("-")) {
       return { error: t("cli.args.unknownOption", { option: arg }) };
     } else {
@@ -71,6 +77,7 @@ function parseCliArgs(argv) {
 }
 
 module.exports = {
+  VALUE_OPTIONS,
   parseCliArgs,
   printHelp,
   printVersion,

@@ -14,7 +14,7 @@ const logger = require("../src/ui/logger");
 const { t } = require("../src/i18n");
 const { applyLanguage, findLangFlag } = require("../src/cli/language");
 const { createCancelToken } = require("../src/cancel-token");
-const { parseCliArgs, printHelp, printVersion } = require("../src/cli/backup-args");
+const { VALUE_OPTIONS, parseCliArgs, printHelp, printVersion } = require("../src/cli/backup-args");
 const { runBrowserSession } = require("../src/app");
 
 const sharedCancelToken = createCancelToken();
@@ -38,7 +38,10 @@ function handleFatalError(error) {
 async function main(argv, runSession = runBrowserSession) {
   // Apply the language before parsing so help and every error, including
   // argument errors that come before --lang, are printed in it.
-  const lang = applyLanguage({ flag: findLangFlag(argv), env: process.env.DISCORD_LANG });
+  const lang = applyLanguage({
+    flag: findLangFlag(argv, Object.keys(VALUE_OPTIONS)),
+    env: process.env.DISCORD_LANG,
+  });
   if (lang.error) {
     logger.error(t("cli.error", { message: lang.error }));
     printHelp();

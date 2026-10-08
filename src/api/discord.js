@@ -5,6 +5,7 @@
 "use strict";
 
 const logger = require("../ui/logger");
+const { t } = require("../i18n");
 
 /**
  * Wait for the specified number of milliseconds.
@@ -66,14 +67,15 @@ async function fetchAllMessages(request, token, channelId, config) {
       if (res.status === 429) {
         const body = await res.json().catch(() => ({}));
         const wait = Math.ceil((body.retry_after ?? 5) * 1000) + 200;
-        logger.write(`\n  [rate limit] waiting ${(wait / 1000).toFixed(1)}s…`);
+        logger.write(`\n  ${t("api.rateLimitWait", { seconds: (wait / 1000).toFixed(1) })}`);
         await sleep(wait);
         continue;
       }
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(`API ${res.status}: ${text}`);
+        // The server-provided text is kept as is; only the prefix is translated.
+        throw new Error(t("api.error", { status: res.status, text }));
       }
 
       batch = await res.json();
@@ -87,7 +89,8 @@ async function fetchAllMessages(request, token, channelId, config) {
     all.push(...batch);
     before = batch[batch.length - 1].id;
 
-    logger.write(`\r  Page ${page_n}: ${all.length} messages fetched...   `);
+    // Trailing spaces clear leftovers when this line overwrites a longer one.
+    logger.write(`\r  ${t("api.pageFetched", { page: page_n, count: all.length })}   `);
     page_n++;
 
     if (batch.length < config.apiBatchSize) {

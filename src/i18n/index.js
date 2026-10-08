@@ -163,6 +163,17 @@ function t(key, params) {
   return translate(DICTIONARIES, currentLanguage, key, params);
 }
 
+/**
+ * Translate a key in every supported language, regardless of the active one.
+ * Useful for input words that must be accepted in any language (for example
+ * the quit command), so the accepted set comes from the dictionaries.
+ * @param {string} key - Message key.
+ * @returns {string[]} One translation per supported language, in display order.
+ */
+function translationsOf(key) {
+  return SUPPORTED_LANGUAGES.map((language) => translate(DICTIONARIES, language, key));
+}
+
 module.exports = {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
@@ -172,5 +183,6 @@ module.exports = {
   getLanguage,
   getLocale,
   translate,
+  translationsOf,
   t,
 };

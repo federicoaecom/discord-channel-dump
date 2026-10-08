@@ -3,7 +3,13 @@ const assert = require("node:assert/strict");
 const pkg = require("../../package.json");
 
 const { DEFAULT_LANGUAGE, setLanguage } = require("../../src/i18n");
-const { parseCliArgs, printHelp, printVersion } = require("../../src/cli/backup-args.js");
+const {
+  VALUE_OPTIONS,
+  parseCliArgs,
+  printHelp,
+  printVersion,
+} = require("../../src/cli/backup-args.js");
+const { findLangFlag } = require("../../src/cli/language.js");
 
 function captureHelp() {
   let captured = "";
@@ -129,6 +135,34 @@ describe("backup-args", () => {
     it("passes an invalid --lang value through for resolveLanguage to reject", () => {
       // Validation lives in src/i18n resolveLanguage so flag and env share one rule.
       assert.equal(parseCliArgs(["--lang", "xx"]).lang, "xx");
+    });
+
+    it("agrees with findLangFlag on the --lang value whenever parsing succeeds", () => {
+      const valueOptions = Object.keys(VALUE_OPTIONS);
+      const samples = [
+        [],
+        ["--lang", "en"],
+        ["--output", "--lang"],
+        ["-o", "--lang", "--lang", "es"],
+        ["--profile", "p", "--lang", "en", "--output", "--lang"],
+        ["--lang", "--output"],
+        ["--lang", "es", "--lang", "en", "--dry-run"],
+      ];
+      for (const argv of samples) {
+        const parsed = parseCliArgs(argv);
+        assert.equal(parsed.error, undefined, JSON.stringify(argv));
+        assert.equal(findLangFlag(argv, valueOptions), parsed.lang, JSON.stringify(argv));
+      }
+    });
+
+    it("lists every value-taking option with the result key it fills", () => {
+      assert.deepEqual(VALUE_OPTIONS, {
+        "--output": "output",
+        "-o": "output",
+        "--profile": "profile",
+        "-p": "profile",
+        "--lang": "lang",
+      });
     });
   });
 
