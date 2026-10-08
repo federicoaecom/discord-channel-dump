@@ -27,4 +27,17 @@ describe("viewer template", () => {
     assert.match(cspMatch[1], /connect-src\s+'none'/i);
     assert.match(cspMatch[1], /frame-src\s+'none'/i);
   });
+
+  it("takes every user-facing label from placeholders instead of hard-coded text", () => {
+    assert.match(template, /<html lang="\{\{LANG\}\}">/);
+    assert.match(template, /<title>\{\{TITLE\}\}<\/title>/);
+    assert.match(template, /\{\{MESSAGE_COUNT_LABEL\}\} &mdash; \{\{GENERATED_AT\}\}/);
+    assert.match(template, /placeholder="\{\{SEARCH_PLACEHOLDER\}\}"/);
+    assert.match(template, /<label for="date-from">\{\{DATE_FROM_LABEL\}\}<\/label>/);
+    assert.match(template, /<label for="date-to">\{\{DATE_TO_LABEL\}\}<\/label>/);
+    assert.match(template, /<button id="clear-btn">\{\{CLEAR_LABEL\}\}<\/button>/);
+    // Only the markup: the inline script uses `msgs` as a variable name.
+    const markup = template.split("<script>")[0];
+    assert.doesNotMatch(markup, /Buscar|Desde|Hasta|Limpiar|msgs/);
+  });
 });

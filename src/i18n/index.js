@@ -112,11 +112,12 @@ function getLanguage() {
 }
 
 /**
- * Get the BCP 47 locale for date and number formatting in the active language.
+ * Get the BCP 47 locale for date and number formatting.
+ * @param {"es" | "en"} [language] - Language to map; defaults to the active one.
  * @returns {string} `es-AR` for Spanish, `en-US` for English.
  */
-function getLocale() {
-  return LOCALES[currentLanguage];
+function getLocale(language = currentLanguage) {
+  return LOCALES[language];
 }
 
 /**
@@ -164,6 +165,18 @@ function t(key, params) {
 }
 
 /**
+ * Translate a key in an explicit language, without reading or changing the
+ * active one. Used to render output (such as the viewer) in a given language.
+ * @param {"es" | "en"} language - Language to look up first.
+ * @param {string} key - Message key.
+ * @param {Record<string, unknown>} [params] - Placeholder values for `{name}`.
+ * @returns {string} The translated, interpolated message.
+ */
+function translateIn(language, key, params) {
+  return translate(DICTIONARIES, language, key, params);
+}
+
+/**
  * Translate a key in every supported language, regardless of the active one.
  * Useful for input words that must be accepted in any language (for example
  * the quit command), so the accepted set comes from the dictionaries.
@@ -183,6 +196,7 @@ module.exports = {
   getLanguage,
   getLocale,
   translate,
+  translateIn,
   translationsOf,
   t,
 };

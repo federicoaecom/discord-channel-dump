@@ -123,4 +123,14 @@ module.exports = Object.freeze({
   "config.positiveInteger": "{field} debe ser un número entero positivo.",
   "config.boolean": "{field} debe ser un valor booleano.",
   "config.oneOf": "{field} debe ser uno de estos valores: {values}.",
+
+  // src/viewer/render.js and src/templates/viewer.html (offline viewer).
+  "viewer.title": "Backup — #{channel}",
+  "viewer.messageCount.one": "{count} mensaje",
+  "viewer.messageCount.other": "{count} mensajes",
+  "viewer.searchPlaceholder": "Buscar en el chat…",
+  "viewer.dateFrom": "Desde",
+  "viewer.dateTo": "Hasta",
+  "viewer.clear": "✕ Limpiar",
+  "viewer.imageAlt": "imagen",
 });

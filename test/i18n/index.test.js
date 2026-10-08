@@ -14,6 +14,7 @@ const {
   getLanguage,
   getLocale,
   translate,
+  translateIn,
   translationsOf,
   t,
 } = i18n;
@@ -128,6 +129,12 @@ describe("getLocale", () => {
     setLanguage("en");
     assert.equal(getLocale(), "en-US");
   });
+
+  it("maps an explicit language without reading or changing the active one", () => {
+    assert.equal(getLocale("en"), "en-US");
+    assert.equal(getLocale("es"), "es-AR");
+    assert.equal(getLanguage(), "es");
+  });
 });
 
 describe("translate", () => {
@@ -175,6 +182,19 @@ describe("t", () => {
 
   it("returns the key for unknown keys", () => {
     assert.equal(t("no.such.key"), "no.such.key");
+  });
+});
+
+describe("translateIn", () => {
+  it("translates in the requested language regardless of the active one", () => {
+    assert.equal(translateIn("en", "app.channelId", { id: "7" }), "Channel ID: 7");
+    setLanguage("en");
+    assert.equal(translateIn("es", "app.channelId", { id: "7" }), "ID del canal: 7");
+    assert.equal(getLanguage(), "en");
+  });
+
+  it("falls back like t() for unknown keys", () => {
+    assert.equal(translateIn("es", "no.such.key"), "no.such.key");
   });
 });
 
