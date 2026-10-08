@@ -1,10 +1,34 @@
-const { describe, it } = require("node:test");
+const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const pkg = require("../../package.json");
 
+const { DEFAULT_LANGUAGE, setLanguage } = require("../../src/i18n");
 const { parseCliArgs, printHelp, printVersion } = require("../../src/cli/backup-args.js");
 
+function captureHelp() {
+  let captured = "";
+  const original = console.log;
+  console.log = (chunk) => {
+    captured += chunk;
+  };
+  try {
+    printHelp();
+  } finally {
+    console.log = original;
+  }
+  return captured;
+}
+
 describe("backup-args", () => {
+  // Most assertions pin English; the Spanish default is covered explicitly below.
+  beforeEach(() => {
+    setLanguage("en");
+  });
+
+  afterEach(() => {
+    setLanguage(DEFAULT_LANGUAGE);
+  });
+
   describe("parseCliArgs", () => {
     it("returns default flags when no args are passed", () => {
       const args = parseCliArgs([]);
@@ -108,21 +132,35 @@ describe("backup-args", () => {
     });
   });
 
+  describe("Spanish default", () => {
+    it("reports argument errors in Spanish", () => {
+      setLanguage("es");
+      assert.equal(parseCliArgs(["--foo"]).error, "Opción desconocida: --foo");
+      assert.equal(parseCliArgs(["extra"]).error, "Argumento inesperado: extra");
+      assert.equal(parseCliArgs(["--output"]).error, "Falta el valor de --output");
+    });
+  });
+
   describe("printHelp", () => {
     it("prints usage to stdout", () => {
-      let captured = "";
-      const original = console.log;
-      console.log = (chunk) => {
-        captured += chunk;
-      };
-      try {
-        printHelp();
-        assert.match(captured, /Usage:/);
-        assert.match(captured, /--help/);
-        assert.match(captured, /--lang <code>/);
-      } finally {
-        console.log = original;
-      }
+      const captured = captureHelp();
+      assert.match(captured, /^\nUsage: node bin\/backup\.js \[options\]\n/);
+      assert.match(captured, /--help/);
+      assert.match(captured, /--lang <code>/);
+    });
+
+    it("derives the language list and default from the i18n module", () => {
+      const captured = captureHelp();
+      assert.match(captured, /--lang <code> {5}Interface language: es, en \(default: es\)/);
+    });
+
+    it("prints Spanish help when the language is Spanish", () => {
+      setLanguage("es");
+      const captured = captureHelp();
+      assert.match(captured, /^\nUso: node bin\/backup\.js \[opciones\]\n/);
+      assert.match(captured, /Opciones:/);
+      assert.match(captured, /Idioma de la interfaz: es, en \(predeterminado: es\)/);
+      assert.doesNotMatch(captured, /Usage:/);
     });
   });
 

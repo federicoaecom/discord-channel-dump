@@ -1,11 +1,22 @@
-const { describe, it } = require("node:test");
+const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const pkg = require("../package.json");
-const { runBrowserSession } = require("../src/app.js");
+const logger = require("../src/ui/logger");
+const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
+const { runBrowserSession, shutdown } = require("../src/app.js");
 const { PROMPT_CLOSED } = require("../src/ui/prompt.js");
+
+// Most assertions pin English; the Spanish default is covered explicitly below.
+beforeEach(() => {
+  setLanguage("en");
+});
+
+afterEach(() => {
+  setLanguage(DEFAULT_LANGUAGE);
+});
 
 function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "app-"));
@@ -14,6 +25,44 @@ function tmpDir() {
 function createPromptStub(answers) {
   let i = 0;
   return () => answers[i++];
+}
+
+/**
+ * Run one capture (dry run) and return every logged line and prompt question.
+ */
+async function runDryCapture() {
+  const dir = tmpDir();
+  const logged = [];
+  const questions = [];
+  const answers = ["", "", "exit"];
+  let i = 0;
+
+  await runBrowserSession({ backupDir: dir, profileDir: dir, dryRun: true }, null, {
+    launchBrowser: async () => ({
+      context: { close: () => Promise.resolve() },
+      page: { goto: async () => {}, evaluate: async () => null },
+      session: { getToken: () => "token" },
+    }),
+    createPrompt: () => ({
+      prompt: (question) => {
+        questions.push(question);
+        return answers[i++];
+      },
+      close: () => {},
+    }),
+    getChannelId: async () => "456",
+    getChannelName: async () => "general",
+    fetchAllMessages: async () => [{ id: "1" }, { id: "2" }],
+    logger: {
+      info: (message) => logged.push(String(message)),
+      error: () => {},
+      warn: () => {},
+      debug: () => {},
+      write: () => {},
+    },
+  });
+
+  return { output: logged.join("\n"), questions };
 }
 
 describe("runBrowserSession", () => {
@@ -54,6 +103,29 @@ describe("runBrowserSession", () => {
     assert.ok(
       logged.some((message) => message.includes(`Discord Channel Dump  v${pkg.version} (API mode)`))
     );
+  });
+
+  it("also exits when the user types 'salir', case-insensitively", async () => {
+    const dir = tmpDir();
+    let closed = false;
+
+    await runBrowserSession({ backupDir: dir, profileDir: dir }, null, {
+      launchBrowser: async () => ({
+        context: {
+          close: () => {
+            closed = true;
+            return Promise.resolve();
+          },
+        },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => null },
+      }),
+      createPrompt: () => ({ prompt: createPromptStub(["SALIR"]), close: () => {} }),
+      saveChannel: async () => {},
+      logger: { info: () => {}, error: () => {}, warn: () => {}, debug: () => {}, write: () => {} },
+    });
+
+    assert.equal(closed, true);
   });
 
   it("processes a channel when the user presses enter", async () => {
@@ -299,5 +371,86 @@ describe("runBrowserSession", () => {
       (error) => error === promptError
     );
     assert.equal(closed, true);
+  });
+});
+
+describe("runBrowserSession language", () => {
+  it("prints the session text and prompts in English when selected", async () => {
+    const { output, questions } = await runDryCapture();
+
+    assert.match(output, new RegExp(`Discord Channel Dump  v${pkg.version} \\(API mode\\)`));
+    assert.match(output, /Profile:/);
+    assert.match(output, /Log in to Discord if prompted\./);
+    assert.match(output, /Then navigate to any channel and press ENTER\./);
+    assert.match(output, /Channel ID: 456/);
+    assert.match(output, /Channel name: "general"/);
+    assert.match(output, /Dry run: would back up 2 messages\./);
+    assert.match(output, /Done\./);
+    assert.deepEqual(questions, [
+      '  > ENTER to capture | "exit" to quit: ',
+      "  > Confirm (ENTER) or type a custom name: ",
+      '  > ENTER to capture | "exit" to quit: ',
+    ]);
+  });
+
+  it("prints the session text and prompts in Spanish by default", async () => {
+    setLanguage(DEFAULT_LANGUAGE);
+    const { output, questions } = await runDryCapture();
+
+    assert.match(output, new RegExp(`Discord Channel Dump  v${pkg.version} \\(modo API\\)`));
+    assert.match(output, /Perfil:/);
+    assert.match(output, /Inicie sesión en Discord si se le solicita\./);
+    assert.match(output, /presione ENTER\./);
+    assert.match(output, /ID del canal: 456/);
+    assert.match(output, /Nombre del canal: "general"/);
+    assert.match(output, /Simulación: se respaldarían 2 mensajes\./);
+    assert.match(output, /Listo\./);
+    assert.doesNotMatch(output, /Channel ID|Dry run|Done\./);
+    assert.deepEqual(questions, [
+      '  > ENTER para capturar | "salir" para terminar: ',
+      "  > Confirme (ENTER) o escriba un nombre personalizado: ",
+      '  > ENTER para capturar | "salir" para terminar: ',
+    ]);
+  });
+
+  it("warns about a missing token in Spanish by default", async () => {
+    setLanguage(DEFAULT_LANGUAGE);
+    const dir = tmpDir();
+    const logged = [];
+
+    await runBrowserSession({ backupDir: dir, profileDir: dir }, null, {
+      launchBrowser: async () => ({
+        context: { close: () => Promise.resolve() },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => null },
+      }),
+      createPrompt: () => ({ prompt: createPromptStub(["", "exit"]), close: () => {} }),
+      logger: {
+        info: (message) => logged.push(String(message)),
+        error: () => {},
+        warn: () => {},
+        debug: () => {},
+        write: () => {},
+      },
+    });
+
+    assert.ok(logged.some((message) => message.includes("Aún no se capturó el token")));
+  });
+
+  it("writes the shutdown message in the active language", async () => {
+    const dir = tmpDir();
+    const written = [];
+    const originalWrite = logger.write;
+    logger.write = (text) => written.push(String(text));
+    try {
+      await shutdown("SIGINT", null, dir);
+      setLanguage("es");
+      await shutdown("SIGINT", null, dir);
+    } finally {
+      logger.write = originalWrite;
+    }
+
+    assert.equal(written[0], "\n  [SIGINT] Cancelling and cleaning up…\n");
+    assert.equal(written[1], "\n  [SIGINT] Cancelando y limpiando…\n");
   });
 });

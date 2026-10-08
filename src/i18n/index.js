@@ -4,7 +4,8 @@
  * The active language is module-level state (like the logger's verbose flag).
  * The CLI entry points resolve it once with `resolveLanguage()` (the `--lang`
  * flag, then the `DISCORD_LANG` env var, then the default) and apply it with
- * `setLanguage()`. Everything else reads it through `t()` / `getLocale()`.
+ * `setLanguage()`, through `applyLanguage()` in src/cli/language.js.
+ * Everything else reads it through `t()` / `getLocale()`.
  *
  * Tests that change the language must restore it, for example with
  * `afterEach(() => setLanguage(DEFAULT_LANGUAGE))`.
@@ -45,31 +46,47 @@ function normalizeLanguage(value) {
 }
 
 /**
- * Build the error message for an unsupported language value.
- * @param {string} source - Where the value came from (`--lang` or `DISCORD_LANG`).
- * @param {string} value - The rejected raw value.
- * @returns {string} Human-readable error message.
- */
-function invalidLanguageMessage(source, value) {
-  return `Invalid value for ${source}: "${value}". Supported values: ${SUPPORTED_LANGUAGES.join(", ")}.`;
-}
-
-/**
  * Resolve the language to use: the flag wins, then the env var, then the default.
  * An empty or blank env var counts as unset. The env var is not validated when
  * a valid flag is given.
+ *
+ * Invalid values never leave the language unresolved, so callers can always
+ * report problems in a known language:
+ * - An invalid flag is a hard error. `language` is the best language known
+ *   for the error message: a valid env value, otherwise the default.
+ * - An invalid env var (with no flag) is only a warning, and the default is
+ *   used, so a bad global setting does not break every command.
+ *
+ * Pure: it neither changes the active language nor builds messages.
  * @param {{ flag?: string, env?: string }} [sources] - Raw flag and env values.
- * @returns {{ language: "es" | "en" } | { error: string }} The resolved language
- *   or an error naming the offending source and value.
+ * @returns {{
+ *   language: "es" | "en",
+ *   error?: { source: "--lang", value: string },
+ *   warning?: { source: "DISCORD_LANG", value: string }
+ * }} The resolved language plus, at most, one problem description.
  */
 function resolveLanguage({ flag, env } = {}) {
+  const envIsSet = typeof env === "string" && env.trim() !== "";
+  const envLanguage = envIsSet ? normalizeLanguage(env) : null;
+
   if (flag !== undefined) {
-    const language = normalizeLanguage(flag);
-    return language ? { language } : { error: invalidLanguageMessage("--lang", flag) };
+    const flagLanguage = normalizeLanguage(flag);
+    if (flagLanguage) {
+      return { language: flagLanguage };
+    }
+    return {
+      language: envLanguage ?? DEFAULT_LANGUAGE,
+      error: { source: "--lang", value: flag },
+    };
   }
-  if (typeof env === "string" && env.trim() !== "") {
-    const language = normalizeLanguage(env);
-    return language ? { language } : { error: invalidLanguageMessage("DISCORD_LANG", env) };
+  if (envLanguage) {
+    return { language: envLanguage };
+  }
+  if (envIsSet) {
+    return {
+      language: DEFAULT_LANGUAGE,
+      warning: { source: "DISCORD_LANG", value: env },
+    };
   }
   return { language: DEFAULT_LANGUAGE };
 }

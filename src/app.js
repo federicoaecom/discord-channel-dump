@@ -14,10 +14,14 @@ const { ensureDir } = require("./utils/fs");
 const { createPrompt, isPromptClosedError } = require("./ui/prompt");
 const { cyan, yellow, dim } = require("./ui/colors");
 const logger = require("./ui/logger");
+const { t } = require("./i18n");
 const { launchBrowser, getChannelId, getChannelNameFromDom } = require("./browser/session");
 const { getChannelName, fetchAllMessages } = require("./api/discord");
 const { normalizeMessage } = require("./messages/normalize");
 const { saveChannel } = require("./output/writer");
+
+// Accepted in every interface language so the quit word never depends on --lang.
+const EXIT_COMMANDS = new Set(["exit", "salir"]);
 
 let currentContext = null;
 let shutdownRegistered = false;
@@ -53,7 +57,7 @@ function cleanupPartFiles(dir) {
  * @returns {Promise<void>}
  */
 async function shutdown(signal, cancelToken, backupDir) {
-  logger.write(`\n  [${signal}] Cancelling and cleaning up…\n`);
+  logger.write(`\n  [${signal}] ${t("app.shutdown")}\n`);
   if (cancelToken) cancelToken.cancel();
   cleanupPartFiles(backupDir);
   try {
@@ -120,54 +124,50 @@ async function runBrowserSession(config, cancelToken, deps = DEFAULT_DEPS) {
   ensureDir(config.profileDir);
 
   depsLogger.info(cyan("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-  depsLogger.info(cyan(`  Discord Channel Dump  v${pkg.version} (API mode)`));
+  depsLogger.info(cyan(`  ${t("app.banner", { version: pkg.version })}`));
   depsLogger.info(cyan("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
-  depsLogger.info(`  ${dim("Profile:")} ${config.profileDir}`);
+  depsLogger.info(`  ${dim(t("app.profileLabel"))} ${config.profileDir}`);
 
   const { context, page, session } = await launchBrowser(config.profileDir);
   currentContext = context;
 
   await page.goto("https://discord.com/app", { waitUntil: "domcontentloaded" });
 
-  depsLogger.info("\n  Log in to Discord if prompted.");
-  depsLogger.info("  Then navigate to any channel and press ENTER.\n");
+  depsLogger.info(`\n  ${t("app.loginHint")}`);
+  depsLogger.info(`  ${t("app.navigateHint")}\n`);
 
   const { prompt, close } = createPrompt();
   registerShutdown(cancelToken, config, close);
 
   try {
     while (true) {
-      const cmd = await prompt('  > ENTER to capture | "exit" to quit: ');
-      if (cmd.toLowerCase() === "exit") break;
+      const cmd = await prompt(`  > ${t("app.prompt.capture")}`);
+      if (EXIT_COMMANDS.has(cmd.trim().toLowerCase())) break;
 
       const token = session.getToken();
       const channelId = await getChannelId(page);
 
       if (!token) {
-        depsLogger.info(
-          yellow(
-            "\n  Token not captured yet — make sure Discord is open and loaded, then try again.\n"
-          )
-        );
+        depsLogger.info(yellow(`\n  ${t("app.tokenMissing")}\n`));
         continue;
       }
       if (!channelId) {
-        depsLogger.info(yellow("\n  Could not detect channel ID. Navigate to a channel first.\n"));
+        depsLogger.info(yellow(`\n  ${t("app.channelIdMissing")}\n`));
         continue;
       }
 
-      depsLogger.info(`\n  Channel ID: ${channelId}`);
+      depsLogger.info(`\n  ${t("app.channelId", { id: channelId })}`);
       const detected = await getChannelName(context.request, token, channelId);
       const fallback = await getChannelNameFromDom(page);
       const channelName = detected || fallback;
-      depsLogger.info(`  Channel name: "${channelName}"`);
-      const override = await prompt("  > Confirm (ENTER) or type a custom name: ");
+      depsLogger.info(`  ${t("app.channelName", { name: channelName })}`);
+      const override = await prompt(`  > ${t("app.prompt.confirmName")}`);
       const finalName = override || channelName;
 
       const raw = await fetchAllMessages(context.request, token, channelId, config);
 
       if (config.dryRun) {
-        depsLogger.info(yellow(`  Dry run: would back up ${raw.length} messages.`));
+        depsLogger.info(yellow(`  ${t("app.dryRunSummary", { count: raw.length })}`));
         continue;
       }
 
@@ -180,7 +180,7 @@ async function runBrowserSession(config, cancelToken, deps = DEFAULT_DEPS) {
     close();
     await context.close();
     currentContext = null;
-    depsLogger.info("  Done.");
+    depsLogger.info(`  ${t("app.done")}`);
   }
 }
 

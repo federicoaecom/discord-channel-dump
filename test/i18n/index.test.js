@@ -73,25 +73,33 @@ describe("resolveLanguage", () => {
     assert.deepEqual(resolveLanguage({ flag: "en", env: "xx" }), { language: "en" });
   });
 
-  it("reports an invalid flag value with its source and the supported values", () => {
-    const result = resolveLanguage({ flag: "xx", env: "en" });
-    assert.equal(result.language, undefined);
-    assert.match(result.error, /--lang/);
-    assert.match(result.error, /"xx"/);
-    assert.match(result.error, /es, en/);
+  it("reports an invalid flag with its source and value, keeping a valid env language", () => {
+    assert.deepEqual(resolveLanguage({ flag: "xx", env: "en" }), {
+      language: "en",
+      error: { source: "--lang", value: "xx" },
+    });
+  });
+
+  it("reports an invalid flag with the default language when env is unset or invalid", () => {
+    assert.deepEqual(resolveLanguage({ flag: "xx" }), {
+      language: "es",
+      error: { source: "--lang", value: "xx" },
+    });
+    assert.deepEqual(resolveLanguage({ flag: "xx", env: "yy" }), {
+      language: "es",
+      error: { source: "--lang", value: "xx" },
+    });
   });
 
   it("reports an empty flag value as invalid", () => {
-    const result = resolveLanguage({ flag: "" });
-    assert.match(result.error, /--lang/);
+    assert.deepEqual(resolveLanguage({ flag: "" }).error, { source: "--lang", value: "" });
   });
 
-  it("reports an invalid env value with its source and the supported values", () => {
-    const result = resolveLanguage({ env: "fr" });
-    assert.equal(result.language, undefined);
-    assert.match(result.error, /DISCORD_LANG/);
-    assert.match(result.error, /"fr"/);
-    assert.match(result.error, /es, en/);
+  it("falls back to the default with a warning for an invalid env value", () => {
+    assert.deepEqual(resolveLanguage({ env: "fr" }), {
+      language: "es",
+      warning: { source: "DISCORD_LANG", value: "fr" },
+    });
   });
 });
 
@@ -151,10 +159,17 @@ describe("translate", () => {
 });
 
 describe("t", () => {
-  it("uses the active language with the seed dictionaries", () => {
-    assert.equal(t("language.en"), es["language.en"]);
+  it("uses the active language", () => {
+    assert.equal(t("app.done"), es["app.done"]);
+    assert.equal(t("app.done"), "Listo.");
     setLanguage("en");
-    assert.equal(t("language.en"), en["language.en"]);
+    assert.equal(t("app.done"), en["app.done"]);
+    assert.equal(t("app.done"), "Done.");
+  });
+
+  it("interpolates params in the active language", () => {
+    setLanguage("en");
+    assert.equal(t("app.channelId", { id: "123" }), "Channel ID: 123");
   });
 
   it("returns the key for unknown keys", () => {
@@ -165,6 +180,13 @@ describe("t", () => {
 describe("dictionaries", () => {
   it("es and en have identical key sets", () => {
     assert.deepEqual(Object.keys(es).sort(), Object.keys(en).sort());
+  });
+
+  it("use the same placeholders in both languages for every key", () => {
+    const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+    for (const key of Object.keys(en)) {
+      assert.deepEqual(placeholders(es[key]), placeholders(en[key]), key);
+    }
   });
 
   it("contain only non-empty string values", () => {
