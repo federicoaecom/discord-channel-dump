@@ -10,6 +10,7 @@ const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
 const backupArgs = require("../src/cli/backup-args.js");
 const backup = require("../bin/backup.js");
 const regen = require("../bin/regen-html.js");
+const { findLangFlag } = require("../src/cli/language.js");
 
 /**
  * Build a child-process environment that ignores any DISCORD_LANG set in the
@@ -325,6 +326,25 @@ describe("CLI smoke tests", () => {
     assert.match(result.stdout, /Usage: node bin\/backup\.js \[options\]/);
   });
 
+  it("backup.js does not take a --lang that is the value of --output", () => {
+    // The parser reads "--lang" as the output directory and "en" as an
+    // unexpected argument, so the language stays the default (Spanish).
+    const result = runCli(backupPath, ["--output", "--lang", "en", "--help"]);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Error: Argumento inesperado: en/);
+    assert.match(result.stdout, /Uso:/);
+  });
+
+  it("regen-html.js parser and findLangFlag agree on the --lang value", () => {
+    const valueOptions = Object.keys(regen.VALUE_OPTIONS);
+    assert.deepEqual(regen.VALUE_OPTIONS, { "--lang": "lang" });
+    for (const argv of [["dir"], ["--lang", "en", "dir"], ["--lang", "--help", "dir"]]) {
+      const parsed = regen.parseCliArgs(argv);
+      assert.equal(parsed.error, undefined, JSON.stringify(argv));
+      assert.equal(findLangFlag(argv, valueOptions), parsed.lang, JSON.stringify(argv));
+    }
+  });
+
   it("backup.js --version prints the version and exits 0", () => {
     const result = spawnSync(process.execPath, [backupPath, "--version"], {
       encoding: "utf8",
@@ -476,7 +496,7 @@ describe("CLI smoke tests", () => {
     assert.match(spanish.stdout, /^ {2}Listo: .*index\.html {2}\(0 mensajes\)/);
   });
 
-  it("backup.js prints a friendly config error and exits 1", () => {
+  it("backup.js prints a friendly config error in the selected language and exits 1", () => {
     const script = `
       const configPath = require.resolve("./src/config");
       const original = require(configPath);
@@ -496,13 +516,20 @@ describe("CLI smoke tests", () => {
       };
       require("./bin/backup").main([]);
     `;
-    const result = spawnSync(process.execPath, ["-e", script], {
-      encoding: "utf8",
-      timeout: 10000,
-      cwd: path.resolve(__dirname, ".."),
-      env: childEnv(),
-    });
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /Error: backupDir must be a non-empty string/);
+    const run = (extraEnv) =>
+      spawnSync(process.execPath, ["-e", script], {
+        encoding: "utf8",
+        timeout: 10000,
+        cwd: path.resolve(__dirname, ".."),
+        env: childEnv(extraEnv),
+      });
+
+    const english = run({ DISCORD_LANG: "en" });
+    assert.equal(english.status, 1);
+    assert.match(english.stderr, /Error: backupDir must be a non-empty string\./);
+
+    const spanish = run();
+    assert.equal(spanish.status, 1);
+    assert.match(spanish.stderr, /Error: backupDir debe ser una cadena no vacía\./);
   });
 });

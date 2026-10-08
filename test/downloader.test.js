@@ -1,4 +1,4 @@
-const { describe, it } = require("node:test");
+const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
@@ -6,6 +6,7 @@ const path = require("path");
 const { startServer, stopServer } = require("./helpers/fixture-server.js");
 const { downloadFile } = require("../src/downloader.js");
 const { createCancelToken } = require("../src/cancel-token.js");
+const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
 
 const baseOpts = {
   maxRetries: 2,
@@ -14,11 +15,21 @@ const baseOpts = {
   timeoutMs: 5000,
 };
 
+// The active language is module-level state; reset it so tests stay independent.
+afterEach(() => {
+  setLanguage(DEFAULT_LANGUAGE);
+});
+
 function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "dl-"));
 }
 
 describe("downloadFile", () => {
+  // These tests assert the English text; the Spanish default is covered below.
+  beforeEach(() => {
+    setLanguage("en");
+  });
+
   it("follows a relative redirect and returns the target file", async () => {
     const dir = tmpDir();
     const server = await startServer(0, [
@@ -194,5 +205,86 @@ describe("downloadFile", () => {
       server.closeAllConnections();
       await stopServer(server);
     }
+  });
+});
+
+/**
+ * Start a fixture server, run a download against `route`, and return the
+ * rejection error. The server is always closed.
+ */
+async function downloadError(route, options = {}) {
+  const dir = tmpDir();
+  const server = await startServer(0, [{ path: "/file", ...route }]);
+  const url = `http://localhost:${server.address().port}/file`;
+  try {
+    await downloadFile(url, path.join(dir, "file.txt"), { ...baseOpts, ...options });
+  } catch (error) {
+    return { error, url };
+  } finally {
+    server.closeAllConnections();
+    await stopServer(server);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  throw new Error("expected the download to fail");
+}
+
+const redirectWithoutLocation = {
+  handler(req, res) {
+    res.writeHead(302);
+    res.end();
+  },
+};
+
+describe("downloadFile error messages", () => {
+  describe("in English", () => {
+    beforeEach(() => {
+      setLanguage("en");
+    });
+
+    it("keeps the English redirect, HTTP, and timeout texts", async () => {
+      let result = await downloadError(redirectWithoutLocation);
+      assert.equal(result.error.message, `Redirect without Location — ${result.url}`);
+
+      result = await downloadError({ redirectTo: "/file" }, { maxRedirects: 1 });
+      assert.equal(result.error.message, `Too many redirects — ${result.url}`);
+
+      result = await downloadError({ status: 404, body: "missing" });
+      assert.equal(result.error.message, `HTTP 404 — ${result.url}`);
+
+      result = await downloadError({ handler: () => {} }, { timeoutMs: 100, maxRetries: 0 });
+      assert.equal(result.error.message, `Timeout (>0.1s) — ${result.url}`);
+    });
+
+    it("cancels an in-flight download with the English message", async () => {
+      const token = createCancelToken();
+      setTimeout(() => token.cancel(), 50);
+      const { error } = await downloadError({ handler: () => {} }, { cancelToken: token });
+      assert.equal(error.name, "CancelError");
+      assert.equal(error.message, "Download cancelled");
+    });
+  });
+
+  describe("in the default language (Spanish)", () => {
+    it("translates the redirect, HTTP, and timeout texts and keeps the URL", async () => {
+      let result = await downloadError(redirectWithoutLocation);
+      assert.equal(result.error.message, `Redirección sin encabezado Location — ${result.url}`);
+
+      result = await downloadError({ redirectTo: "/file" }, { maxRedirects: 1 });
+      assert.equal(result.error.message, `Demasiadas redirecciones — ${result.url}`);
+
+      result = await downloadError({ status: 404, body: "missing" });
+      assert.equal(result.error.message, `Error HTTP 404 — ${result.url}`);
+
+      result = await downloadError({ handler: () => {} }, { timeoutMs: 100, maxRetries: 0 });
+      assert.equal(result.error.message, `Tiempo de espera agotado (>0.1s) — ${result.url}`);
+    });
+
+    it("cancels with a Spanish message that is still detected by identity", async () => {
+      const token = createCancelToken();
+      setTimeout(() => token.cancel(), 50);
+      const { error } = await downloadError({ handler: () => {} }, { cancelToken: token });
+      assert.equal(error.name, "CancelError");
+      assert.equal(error.message, "Descarga cancelada");
+    });
   });
 });

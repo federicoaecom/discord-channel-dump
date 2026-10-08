@@ -17,21 +17,36 @@ const {
   t,
 } = require("../i18n");
 
+/** The option that selects the interface language. */
+const LANG_OPTION = "--lang";
+
 /**
  * Find the raw `--lang` value in argv without fully parsing it.
  *
  * This lets the entry points select the language before the argument parser
- * reports errors, even when an invalid argument comes before `--lang`. Like
- * the parsers, the last `--lang` wins. A trailing `--lang` without a value is
- * ignored here; the parser reports it as a missing value.
+ * reports errors, even when an invalid argument comes before `--lang`.
+ *
+ * It tokenizes like the parsers: every option in `valueOptions` consumes the
+ * next argument as its value, so `--output --lang` reads `--lang` as the
+ * output directory, not as the language option. Like the parsers, the last
+ * `--lang` wins. A trailing value option without a value is ignored here; the
+ * parser reports it as a missing value. Unlike the parsers, scanning does not
+ * stop at an unknown option, so that error is also reported in the language.
  * @param {string[]} argv - Raw CLI arguments (excluding node and script path).
+ * @param {Iterable<string>} [valueOptions] - Every option of the caller's parser
+ *   that takes a value, including `--lang` (pass the parser's `VALUE_OPTIONS` keys).
  * @returns {string | undefined} The raw value, or undefined when absent.
  */
-function findLangFlag(argv) {
+function findLangFlag(argv, valueOptions = [LANG_OPTION]) {
+  const takesValue = new Set(valueOptions);
+  takesValue.add(LANG_OPTION);
   let value;
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--lang" && i + 1 < argv.length) {
-      value = argv[++i];
+    if (takesValue.has(argv[i]) && i + 1 < argv.length) {
+      const option = argv[i++];
+      if (option === LANG_OPTION) {
+        value = argv[i];
+      }
     }
   }
   return value;
@@ -81,6 +96,7 @@ function applyLanguage({ flag, env, warn = logger.warn } = {}) {
 }
 
 module.exports = {
+  LANG_OPTION,
   applyLanguage,
   findLangFlag,
   languageHelpParams,

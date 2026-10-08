@@ -15,6 +15,7 @@ const { downloadFile } = require("../downloader");
 const { isCancelError } = require("../cancel-token");
 const { green, yellow, dim } = require("../ui/colors");
 const logger = require("../ui/logger");
+const { t } = require("../i18n");
 const { renderProgressBar } = require("../ui/progress");
 
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
@@ -68,18 +69,25 @@ async function downloadMediaType(messages, directory, type, cancelToken, downloa
           } catch (error) {
             handleDownloadError(error);
             failed++;
-            logger.write(`\n  ${yellow(`[skip ${type.shortLabel}]`)} ${error.message}\n`);
+            logger.write(`\n  ${yellow(t(type.skipTagKey))} ${error.message}\n`);
           }
         }
 
         outcomes.set(url, { filename, success });
         processed++;
         const elapsed = ((Date.now() - startedAt) / 1000).toFixed(0);
-        logger.write(
-          `\r  ${renderProgressBar(Math.round((processed / filenames.size) * 100), {
-            label: type.label,
-          })} ${processed}/${filenames.size} unique | ${downloaded} downloaded ${reused} reused ${failed} failed ${elapsed}s`
-        );
+        const bar = renderProgressBar(Math.round((processed / filenames.size) * 100), {
+          label: t(type.labelKey),
+        });
+        const counts = t("writer.progress", {
+          processed,
+          total: filenames.size,
+          downloaded,
+          reused,
+          failed,
+          elapsed,
+        });
+        logger.write(`\r  ${bar} ${counts}`);
       }
 
       const outcome = outcomes.get(url);
@@ -90,22 +98,20 @@ async function downloadMediaType(messages, directory, type, cancelToken, downloa
   }
 
   logger.info(
-    `\n  ${green(`${type.label} done:`)} ${downloaded} downloaded, ${reused} reused, ${failed} failed.`
+    `\n  ${green(t(type.doneKey))} ${t("writer.mediaSummary", { downloaded, reused, failed })}`
   );
 }
 
 function resolveChannelDir(backupDir, channelName) {
   const sanitizedName = sanitize(channelName);
   if (sanitizedName === "" || sanitizedName === "." || sanitizedName === "..") {
-    throw new Error(
-      `Invalid channel name "${sanitizedName}": expected a non-empty channel subdirectory`
-    );
+    throw new Error(t("writer.invalidName.empty", { name: sanitizedName }));
   }
 
   const portableName = sanitizedName.replace(/[ .]+$/g, "");
   const deviceName = portableName.split(".", 1)[0].replace(/ +$/g, "");
   if (WINDOWS_RESERVED_NAME.test(deviceName)) {
-    throw new Error(`Invalid channel name "${sanitizedName}": reserved on Windows`);
+    throw new Error(t("writer.invalidName.reserved", { name: sanitizedName }));
   }
 
   const baseDir = path.resolve(backupDir);
@@ -113,9 +119,7 @@ function resolveChannelDir(backupDir, channelName) {
   const relative = path.relative(baseDir, channelDir);
   const escapesBase = relative === ".." || relative.startsWith(`..${path.sep}`);
   if (relative === "" || escapesBase || path.isAbsolute(relative)) {
-    throw new Error(
-      `Invalid channel name "${sanitizedName}": resolved directory must be inside backupDir`
-    );
+    throw new Error(t("writer.invalidName.outsideBackupDir", { name: sanitizedName }));
   }
 
   return channelDir;
@@ -141,8 +145,9 @@ async function downloadMedia(
     messages,
     imagesDir,
     {
-      label: "Images",
-      shortLabel: "img",
+      labelKey: "writer.images.label",
+      skipTagKey: "writer.images.skipTag",
+      doneKey: "writer.images.done",
       sourceKey: "images",
       localKey: "localImages",
       getUrl: (url) => url,
@@ -156,8 +161,9 @@ async function downloadMedia(
     messages,
     attachmentsDir,
     {
-      label: "Attachments",
-      shortLabel: "att",
+      labelKey: "writer.attachments.label",
+      skipTagKey: "writer.attachments.skipTag",
+      doneKey: "writer.attachments.done",
       sourceKey: "attachments",
       localKey: "localAttachments",
       getUrl: (attachment) => attachment.url,
@@ -193,7 +199,7 @@ async function saveChannel(
   ensureDir(channelDir);
   ensureDir(imagesDir);
   ensureDir(attachmentsDir);
-  logger.info(`  Folder: ${channelDir}\n`);
+  logger.info(`  ${t("writer.folder", { path: channelDir })}\n`);
 
   await downloadMediaFn(messages, imagesDir, attachmentsDir, cancelToken);
 
@@ -211,10 +217,11 @@ async function saveChannel(
   const imgs = messages.reduce((n, m) => n + (m.localImages || []).length, 0);
   const atts = messages.reduce((n, m) => n + (m.localAttachments || []).length, 0);
 
+  const mediaCounts = t("writer.mediaCounts", { images: imgs, attachments: atts });
   logger.info(
-    `\n  ${green("Saved")} ${messages.length} ${dim("messages")} | Images: ${imgs} | Attachments: ${atts}`
+    `\n  ${green(t("writer.saved"))} ${messages.length} ${dim(t("writer.messages"))} | ${mediaCounts}`
   );
-  logger.info(`  Output: ${channelDir}\n`);
+  logger.info(`  ${t("writer.output", { path: channelDir })}\n`);
   logger.info(dim("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"));
 
   return {

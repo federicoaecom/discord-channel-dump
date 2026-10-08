@@ -22,7 +22,12 @@ const path = require("path");
 const pkg = require("../package.json");
 const logger = require("../src/ui/logger");
 const { t } = require("../src/i18n");
-const { applyLanguage, findLangFlag, languageHelpParams } = require("../src/cli/language");
+const {
+  LANG_OPTION,
+  applyLanguage,
+  findLangFlag,
+  languageHelpParams,
+} = require("../src/cli/language");
 const { generateHtml } = require("../src/viewer/render");
 
 function printHelp() {
@@ -34,12 +39,22 @@ function printVersion() {
 }
 
 /**
+ * Options that take the next argument as their value, mapped to the result key
+ * they fill. `main()` passes the keys to `findLangFlag()` so it skips option
+ * values exactly like this parser does.
+ */
+const VALUE_OPTIONS = Object.freeze({ [LANG_OPTION]: "lang" });
+
+/**
  * Parse command-line arguments for bin/regen-html.js.
  * @param {string[]} argv - Raw CLI arguments (excluding node and script path).
  * @returns {{ help: boolean, version: boolean, lang?: string, _: string[] } | { error: string }}
  *   Parsed options or an error object whose message uses the active language.
- *   `lang` is the raw `--lang` value; it is validated by `resolveLanguage` in
- *   src/i18n.
+ *   `lang` is the raw `--lang` value. `main()` does not read it: it applies the
+ *   language before parsing, with `findLangFlag()` and the same `VALUE_OPTIONS`,
+ *   so even argument errors are translated. Both always agree when parsing
+ *   succeeds. The parser still accepts `--lang` so the option and its value are
+ *   consumed instead of reported as unknown or taken as the backup folder.
  */
 function parseCliArgs(argv) {
   const result = { help: false, version: false, _: [] };
@@ -50,11 +65,11 @@ function parseCliArgs(argv) {
       result.help = true;
     } else if (arg === "--version" || arg === "-v") {
       result.version = true;
-    } else if (arg === "--lang") {
+    } else if (Object.hasOwn(VALUE_OPTIONS, arg)) {
       if (i + 1 >= argv.length) {
         return { error: t("cli.args.missingValue", { option: arg }) };
       }
-      result.lang = argv[++i];
+      result[VALUE_OPTIONS[arg]] = argv[++i];
     } else if (arg.startsWith("-")) {
       return { error: t("cli.args.unknownOption", { option: arg }) };
     } else {
@@ -68,7 +83,10 @@ function parseCliArgs(argv) {
 async function main(argv) {
   // Apply the language before parsing so help and every error, including
   // argument errors that come before --lang, are printed in it.
-  const lang = applyLanguage({ flag: findLangFlag(argv), env: process.env.DISCORD_LANG });
+  const lang = applyLanguage({
+    flag: findLangFlag(argv, Object.keys(VALUE_OPTIONS)),
+    env: process.env.DISCORD_LANG,
+  });
   if (lang.error) {
     logger.error(t("cli.error", { message: lang.error }));
     printHelp();
@@ -130,4 +148,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseCliArgs };
+module.exports = { VALUE_OPTIONS, parseCliArgs };

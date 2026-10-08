@@ -67,7 +67,9 @@ module.exports = Object.freeze({
   "app.profileLabel": "Profile:",
   "app.loginHint": "Log in to Discord if prompted.",
   "app.navigateHint": "Then navigate to any channel and press ENTER.",
-  "app.prompt.capture": 'ENTER to capture | "exit" to quit: ',
+  // Typed at the capture prompt to quit. Every language's word is accepted.
+  "app.exitCommand": "exit",
+  "app.prompt.capture": 'ENTER to capture | "{exit}" to quit: ',
   "app.prompt.confirmName": "Confirm (ENTER) or type a custom name: ",
   "app.tokenMissing":
     "Token not captured yet — make sure Discord is open and loaded, then try again.",
@@ -77,4 +79,47 @@ module.exports = Object.freeze({
   "app.dryRunSummary": "Dry run: would back up {count} messages.",
   "app.done": "Done.",
   "app.shutdown": "Cancelling and cleaning up…",
+
+  // src/output/writer.js
+  "writer.images.label": "Images",
+  "writer.images.skipTag": "[skip img]",
+  "writer.images.done": "Images done:",
+  "writer.attachments.label": "Attachments",
+  "writer.attachments.skipTag": "[skip att]",
+  "writer.attachments.done": "Attachments done:",
+  "writer.progress":
+    "{processed}/{total} unique | {downloaded} downloaded {reused} reused {failed} failed {elapsed}s",
+  "writer.mediaSummary": "{downloaded} downloaded, {reused} reused, {failed} failed.",
+  "writer.folder": "Folder: {path}",
+  "writer.saved": "Saved",
+  "writer.messages": "messages",
+  "writer.mediaCounts": "Images: {images} | Attachments: {attachments}",
+  "writer.output": "Output: {path}",
+  "writer.invalidName.empty":
+    'Invalid channel name "{name}": expected a non-empty channel subdirectory',
+  "writer.invalidName.reserved": 'Invalid channel name "{name}": reserved on Windows',
+  "writer.invalidName.outsideBackupDir":
+    'Invalid channel name "{name}": resolved directory must be inside backupDir',
+
+  // src/api/discord.js
+  "api.rateLimitWait": "[rate limit] waiting {seconds}s…",
+  "api.pageFetched": "Page {page}: {count} messages fetched...",
+  "api.error": "API {status}: {text}",
+
+  // src/downloader.js
+  "downloader.cancelled": "Download cancelled",
+  "downloader.redirectWithoutLocation": "Redirect without Location — {url}",
+  "downloader.tooManyRedirects": "Too many redirects — {url}",
+  "downloader.httpStatus": "HTTP {status} — {url}",
+  "downloader.timeout": "Timeout (>{seconds}s) — {url}",
+
+  // src/config.js validation. {field} is a config field name and stays untranslated.
+  "config.notObject": "Configuration must be an object.",
+  "config.nonEmptyString": "{field} must be a non-empty string.",
+  "config.integerRange": "{field} must be an integer between {min} and {max}",
+  "config.nonNegativeNumber": "{field} must be a non-negative number.",
+  "config.positiveNumber": "{field} must be a positive number.",
+  "config.positiveInteger": "{field} must be a positive integer.",
+  "config.boolean": "{field} must be a boolean.",
+  "config.oneOf": "{field} must be one of: {values}.",
 });

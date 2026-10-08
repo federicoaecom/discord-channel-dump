@@ -14,6 +14,7 @@ const {
   getLanguage,
   getLocale,
   translate,
+  translationsOf,
   t,
 } = i18n;
 
@@ -174,6 +175,17 @@ describe("t", () => {
 
   it("returns the key for unknown keys", () => {
     assert.equal(t("no.such.key"), "no.such.key");
+  });
+});
+
+describe("translationsOf", () => {
+  it("returns the key's text in every supported language, in order", () => {
+    setLanguage("en");
+    assert.deepEqual(translationsOf("app.exitCommand"), ["salir", "exit"]);
+  });
+
+  it("falls back like t() for keys missing from a dictionary", () => {
+    assert.deepEqual(translationsOf("no.such.key"), ["no.such.key", "no.such.key"]);
   });
 });
 

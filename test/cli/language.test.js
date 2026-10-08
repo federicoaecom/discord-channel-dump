@@ -36,6 +36,28 @@ describe("findLangFlag", () => {
   it("ignores a trailing --lang without a value", () => {
     assert.equal(findLangFlag(["--lang"]), undefined);
   });
+
+  describe("with the caller's value-taking options", () => {
+    const valueOptions = ["--output", "-o", "--lang"];
+
+    it("does not read --lang when it is the value of another option", () => {
+      assert.equal(findLangFlag(["--output", "--lang", "en"], valueOptions), undefined);
+      assert.equal(findLangFlag(["-o", "--lang"], valueOptions), undefined);
+    });
+
+    it("still finds a later --lang after another option's value", () => {
+      assert.equal(findLangFlag(["-o", "--lang", "--lang", "en"], valueOptions), "en");
+      assert.equal(findLangFlag(["--output", "out", "--lang", "en"], valueOptions), "en");
+    });
+
+    it("takes the next token as the --lang value even when it looks like an option", () => {
+      assert.equal(findLangFlag(["--lang", "--output", "x"], valueOptions), "--output");
+    });
+
+    it("ignores a trailing value-taking option without a value", () => {
+      assert.equal(findLangFlag(["--lang", "en", "--output"], valueOptions), "en");
+    });
+  });
 });
 
 describe("applyLanguage", () => {

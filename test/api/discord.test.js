@@ -1,6 +1,12 @@
-const { describe, it } = require("node:test");
+const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { getChannelName, fetchAllMessages } = require("../../src/api/discord.js");
+const { DEFAULT_LANGUAGE, setLanguage } = require("../../src/i18n");
+
+// The active language is module-level state; reset it so tests stay independent.
+afterEach(() => {
+  setLanguage(DEFAULT_LANGUAGE);
+});
 
 function createFakeRequest(responses) {
   return {
@@ -106,6 +112,11 @@ describe("getChannelName", () => {
 });
 
 describe("fetchAllMessages", () => {
+  // These tests assert the English text; the Spanish default is covered below.
+  beforeEach(() => {
+    setLanguage("en");
+  });
+
   it("fetches paginated messages and returns them oldest-first", async () => {
     const messages = [
       { id: "1", content: "oldest" },
@@ -280,5 +291,90 @@ describe("fetchAllMessages", () => {
     });
 
     assert.equal(result.length, 1);
+  });
+});
+
+describe("fetchAllMessages terminal output", () => {
+  function rateLimitedThenOk() {
+    let call = 0;
+    return createFakeRequest([
+      {
+        match: "/api/v9/channels/123/messages",
+        handler: () => {
+          call++;
+          if (call === 1) {
+            return {
+              ok: false,
+              status: 429,
+              json: async () => ({ retry_after: 0.05 }),
+              text: async () => "",
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [{ id: "1" }, { id: "2" }],
+            text: async () => "",
+          };
+        },
+      },
+    ]);
+  }
+
+  function forbidden() {
+    return createFakeRequest([
+      {
+        match: "/api/v9/channels/123/messages",
+        handler: () => ({
+          ok: false,
+          status: 403,
+          json: async () => ({}),
+          text: async () => "Missing Access",
+        }),
+      },
+    ]);
+  }
+
+  async function captureFetch(request) {
+    const chunks = [];
+    const originalWrite = process.stdout.write;
+    process.stdout.write = (chunk) => {
+      chunks.push(String(chunk));
+      return true;
+    };
+    try {
+      await fetchAllMessages(request, "token", "123", { apiBatchSize: 50, apiDelayMs: 0 });
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+    return chunks.join("");
+  }
+
+  it("prints the rate-limit wait and page progress in English", async () => {
+    setLanguage("en");
+    const output = await captureFetch(rateLimitedThenOk());
+    assert.ok(output.includes("\n  [rate limit] waiting 0.3s…"), output);
+    assert.ok(output.includes("\r  Page 1: 2 messages fetched...   "), output);
+  });
+
+  it("prints the rate-limit wait and page progress in Spanish by default", async () => {
+    const output = await captureFetch(rateLimitedThenOk());
+    assert.ok(output.includes("\n  [límite de solicitudes] esperando 0.3s…"), output);
+    assert.ok(output.includes("\r  Página 1: 2 mensajes obtenidos...   "), output);
+  });
+
+  it("keeps the server text in the English API error", async () => {
+    setLanguage("en");
+    await assert.rejects(captureFetch(forbidden()), (error) => {
+      assert.equal(error.message, "API 403: Missing Access");
+      return true;
+    });
+  });
+
+  it("keeps the server text in the Spanish API error", async () => {
+    await assert.rejects(captureFetch(forbidden()), (error) => {
+      assert.equal(error.message, "La API respondió 403: Missing Access");
+      return true;
+    });
   });
 });

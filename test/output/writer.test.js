@@ -1,15 +1,46 @@
-const { describe, it } = require("node:test");
+const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { createHash } = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { saveChannel, downloadMedia } = require("../../src/output/writer.js");
+const { DEFAULT_LANGUAGE, setLanguage } = require("../../src/i18n");
+
+// The active language is module-level state; reset it so tests stay independent.
+afterEach(() => {
+  setLanguage(DEFAULT_LANGUAGE);
+});
+
+function tmpDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "writer-"));
+}
+
+/**
+ * Run an async function while capturing everything written to stdout.
+ * @param {() => Promise<unknown>} fn - Function to run.
+ * @returns {Promise<{ output: string, result: unknown }>} Captured output and result.
+ */
+async function captureStdout(fn) {
+  const chunks = [];
+  const originalWrite = process.stdout.write;
+  process.stdout.write = (chunk) => {
+    chunks.push(String(chunk));
+    return true;
+  };
+  try {
+    const result = await fn();
+    return { output: chunks.join(""), result };
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+}
 
 describe("saveChannel", () => {
-  function tmpDir() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), "writer-"));
-  }
+  // These tests assert the English text; the Spanish default is covered below.
+  beforeEach(() => {
+    setLanguage("en");
+  });
 
   async function generatedImageFilename(sourceName) {
     const dir = tmpDir();
@@ -287,6 +318,19 @@ describe("saveChannel", () => {
     assert.equal(saved[0].localAttachments.length, 0);
   });
 
+  it("prints the folder, saved summary, and output lines", async () => {
+    const dir = tmpDir();
+    const messages = [{ msgId: "1", images: ["https://cdn.example.com/photo.png"] }];
+
+    const { output, result } = await captureStdout(() =>
+      saveChannel("channel", messages, { backupDir: dir }, null, fakeDownloadMedia)
+    );
+
+    assert.ok(output.includes(`  Folder: ${result.channelDir}\n`), output);
+    assert.ok(output.includes("\n  Saved 1 messages | Images: 1 | Attachments: 0\n"), output);
+    assert.ok(output.includes(`  Output: ${result.channelDir}\n`), output);
+  });
+
   it("renders a progress bar and success summary during real downloads", async () => {
     const dir = tmpDir();
     const imagesDir = path.join(dir, "images");
@@ -322,7 +366,8 @@ describe("saveChannel", () => {
     assert.match(output, /Images.*\[.*\].*100%/);
     assert.match(output, /Attachments.*\[.*\].*100%/);
     assert.match(output, /Images done: 1 downloaded, 0 reused, 0 failed/);
-    assert.match(output, /Attachments done: 1 downloaded, 0 reused, 0 failed/);
+    assert.match(output, /Attachments done: 1 downloaded, 0 reused, 0 failed\./);
+    assert.match(output, / 1\/1 unique \| 1 downloaded 0 reused 0 failed \d+s/);
     assert.match(messages[0].localImages[0], /^images\/photo_[0-9a-f]{64}\.png$/);
     assert.match(messages[0].localAttachments[0].path, /^attachments\/doc_[0-9a-f]{64}\.pdf$/);
   });
@@ -437,4 +482,89 @@ describe("saveChannel", () => {
     assert.match(chunks.join(""), /\[skip img\]/);
     assert.deepEqual(messages[0].localImages, []);
   });
+});
+
+describe("writer output in the default language (Spanish)", () => {
+  async function downloadWith(downloadFileFn) {
+    const dir = tmpDir();
+    const messages = [
+      {
+        images: ["https://cdn.example.com/photo.png"],
+        attachments: [{ label: "doc.pdf", url: "https://cdn.example.com/doc.pdf" }],
+      },
+    ];
+    try {
+      const { output } = await captureStdout(() =>
+        downloadMedia(
+          messages,
+          path.join(dir, "images"),
+          path.join(dir, "attachments"),
+          null,
+          downloadFileFn
+        )
+      );
+      return output;
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("prints Spanish progress lines and per-type summaries", async () => {
+    const output = await downloadWith(async (url, dest) => {
+      if (url.endsWith(".pdf")) throw new Error("network error");
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, "data");
+    });
+
+    assert.match(output, /Imágenes \[.*\] 100%/);
+    assert.match(output, /Adjuntos \[.*\] 100%/);
+    assert.match(output, / 1\/1 archivos \| descargados: 1 reutilizados: 0 fallidos: 0 \d+s/);
+    assert.match(output, / 1\/1 archivos \| descargados: 0 reutilizados: 0 fallidos: 1 \d+s/);
+    assert.match(output, /Imágenes listas\. Descargados: 1, reutilizados: 0, fallidos: 0\./);
+    assert.match(output, /Adjuntos listos\. Descargados: 0, reutilizados: 0, fallidos: 1\./);
+    assert.doesNotMatch(output, /unique|downloaded|reused|\[skip/);
+  });
+
+  it("tags skipped images and attachments in Spanish, keeping the error text", async () => {
+    const output = await downloadWith(async () => {
+      throw new Error("network error");
+    });
+
+    assert.match(output, /\n {2}\[omitido img\] network error\n/);
+    assert.match(output, /\n {2}\[omitido adj\] network error\n/);
+  });
+
+  it("prints the folder, saved summary, and output lines in Spanish", async () => {
+    const dir = tmpDir();
+    try {
+      const { output, result } = await captureStdout(() =>
+        saveChannel("canal", [{ msgId: "1" }], { backupDir: dir }, null, async () => {})
+      );
+      assert.ok(output.includes(`  Carpeta: ${result.channelDir}\n`), output);
+      assert.ok(
+        output.includes("\n  Se guardaron 1 mensajes | Imágenes: 0 | Adjuntos: 0\n"),
+        output
+      );
+      assert.ok(output.includes(`  Salida: ${result.channelDir}\n`), output);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  for (const [channelName, expected] of [
+    ["..", 'Nombre de canal no válido "..": se esperaba un subdirectorio de canal no vacío'],
+    ["CON", 'Nombre de canal no válido "CON": es un nombre reservado en Windows'],
+  ]) {
+    it(`rejects ${JSON.stringify(channelName)} with a Spanish error`, async () => {
+      const dir = tmpDir();
+      try {
+        await assert.rejects(
+          saveChannel(channelName, [], { backupDir: dir }, null, async () => {}),
+          (error) => error.message === expected
+        );
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
 });
