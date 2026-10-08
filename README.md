@@ -1,5 +1,7 @@
 # Discord Channel Dump
 
+**English** | [Leer en español](README.es.md)
+
 Discord channel backup tool using Playwright browser automation. No bot token or admin permissions are required — it uses your normal Discord user session.
 
 ---
@@ -16,6 +18,25 @@ Your browser session  ->  GET /api/v9/channels/{id}/messages?limit=50&before={id
 This fetches **100% of the messages** without timing or scroll issues.
 
 The browser opens **once** and stays authenticated between runs thanks to the persistent profile stored in `browser-profile/`. You do not need to log in every time.
+
+---
+
+## Security & Privacy
+
+| What | Where | What to do |
+|------|-------|------------|
+| Logged-in Discord session (cookies and the Discord web app's own site data) | `browser-profile/` | Treat it like a password. Never commit or share it. Delete the folder to log out. |
+| Discord authorization token captured by the tool | Process memory, for the current run | Nothing to do. The tool does not log it or write it to disk. |
+| Private message content and attachments | `backups/` | Store and share it with the same care as the original conversations. |
+
+- **Token handling**: the tool reads the token from the `Authorization` header of the requests that the Discord web app sends to `discord.com/api`. It keeps the token in memory for the current run and sends it only with its own Discord API requests, which run in the Node.js process through Playwright. Media downloads from the CDN do not include it.
+- **Git**: `backups/` and `browser-profile/` are listed in `.gitignore`. If you change their location with `--output`, `--profile`, or environment variables, keep the new folders out of version control yourself.
+
+### Disclaimer
+
+- Automating a user account may violate [Discord's Terms of Service](https://discord.com/terms). Use this tool at your own risk.
+- Back up only content that you have the right to access and keep.
+- This project is not affiliated with, endorsed by, or sponsored by Discord.
 
 ---
 
@@ -100,12 +121,14 @@ backups/
 
 ### HTML Viewer (`index.html`)
 
+The viewer interface is in Spanish. CLI messages are currently in English.
+
 The viewer includes:
 
-- **Real-time search** — filters messages by text or author, with match highlighting.
-- **Date range filter** — From / To selectors that combine with search.
+- **Real-time search** — filters messages by text or author, with match highlighting (placeholder: "Buscar en el chat…").
+- **Date range filter** — "Desde" (from) and "Hasta" (to) date selectors that combine with search.
 - **Ctrl+F** — redirects to the internal search instead of the browser find dialog.
-- **Clear button** — resets all filters at once.
+- **Clear button** — "Limpiar" resets all filters at once.
 - Works completely **offline** — no internet or server required.
 
 ### `messages.json` — Message Format
@@ -193,7 +216,7 @@ Delete the file `browser-profile/SingletonLock` and run the script again.
 
 ## Notes
 
-- The backup **skips files that already exist** on disk — it is safe to re-run on a channel that was already processed. Only `messages.json` and `index.html` are overwritten.
+- The backup **skips files that already exist** on disk — it is safe to re-run on a channel that was already processed. Only `messages.json` and `index.html` are overwritten. Backups created before the current filename scheme download their media again; see the upgrade notes in [CHANGELOG.md](CHANGELOG.md).
 - Folders are named from the channel name, with invalid Windows characters sanitized.
 - The `browser-profile/` folder contains your Chrome session — do not delete it or you will lose the saved authentication.
 - `backups/` and `browser-profile/` are preserved runtime directories; source cleanup and restructuring never move or delete them.
