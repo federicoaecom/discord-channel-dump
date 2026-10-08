@@ -3,7 +3,6 @@ const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 
 const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
@@ -11,6 +10,9 @@ const backupArgs = require("../src/cli/backup-args.js");
 const backup = require("../bin/backup.js");
 const regen = require("../bin/regen-html.js");
 const { findLangFlag } = require("../src/cli/language.js");
+const { createTempDirs } = require("./helpers/temp-dirs.js");
+
+const temp = createTempDirs();
 
 /**
  * Build a child-process environment that ignores any DISCORD_LANG set in the
@@ -32,6 +34,7 @@ beforeEach(() => {
 
 afterEach(() => {
   setLanguage(DEFAULT_LANGUAGE);
+  temp.cleanup();
 });
 
 function runCli(scriptPath, args, extraEnv) {
@@ -462,7 +465,7 @@ describe("CLI smoke tests", () => {
   });
 
   it("regen-html.js reports a missing messages.json in the selected language", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-missing-"));
+    const dir = temp.make("regen-missing-");
     const english = runCli(regenPath, ["--lang", "en", dir]);
     assert.equal(english.status, 1);
     assert.match(english.stderr, /Not found: .*messages\.json/);
@@ -473,7 +476,7 @@ describe("CLI smoke tests", () => {
   });
 
   it("regen-html.js reports an unparsable messages.json in the selected language", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-bad-"));
+    const dir = temp.make("regen-bad-");
     fs.writeFileSync(path.join(dir, "messages.json"), "{not json", "utf8");
     const english = runCli(regenPath, ["--lang", "en", dir]);
     assert.equal(english.status, 1);
@@ -485,7 +488,7 @@ describe("CLI smoke tests", () => {
   });
 
   it("regen-html.js reports the regenerated file and message count in the selected language", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-ok-"));
+    const dir = temp.make("regen-ok-");
     fs.writeFileSync(path.join(dir, "messages.json"), "[]", "utf8");
     const english = runCli(regenPath, ["--lang", "en", dir]);
     assert.equal(english.status, 0, english.stderr);
@@ -497,7 +500,7 @@ describe("CLI smoke tests", () => {
   });
 
   it("regen-html.js uses the singular for a single message in the selected language", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-one-"));
+    const dir = temp.make("regen-one-");
     try {
       const messages = [{ msgId: "1", timestamp: "2024-03-15T14:32:00.000Z", text: "hi" }];
       fs.writeFileSync(path.join(dir, "messages.json"), JSON.stringify(messages), "utf8");
@@ -515,7 +518,7 @@ describe("CLI smoke tests", () => {
   });
 
   it("regen-html.js writes the viewer in the selected language", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "regen-viewer-"));
+    const dir = temp.make("regen-viewer-");
     const ts = "2024-03-15T14:32:00.000Z";
     const messages = [{ msgId: "1", timestamp: ts, author: "Alice", text: "hi" }];
     fs.writeFileSync(path.join(dir, "messages.json"), JSON.stringify(messages), "utf8");

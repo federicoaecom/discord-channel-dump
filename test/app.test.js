@@ -1,13 +1,14 @@
 const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
-const os = require("os");
-const path = require("path");
 const pkg = require("../package.json");
 const logger = require("../src/ui/logger");
 const { DEFAULT_LANGUAGE, setLanguage } = require("../src/i18n");
 const { runBrowserSession, shutdown } = require("../src/app.js");
 const { PROMPT_CLOSED } = require("../src/ui/prompt.js");
+const { createTempDirs } = require("./helpers/temp-dirs.js");
+
+const temp = createTempDirs();
 
 // Most assertions pin English; the Spanish default is covered explicitly below.
 beforeEach(() => {
@@ -16,10 +17,11 @@ beforeEach(() => {
 
 afterEach(() => {
   setLanguage(DEFAULT_LANGUAGE);
+  temp.cleanup();
 });
 
 function tmpDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "app-"));
+  return temp.make("app-");
 }
 
 function createPromptStub(answers) {
@@ -29,8 +31,9 @@ function createPromptStub(answers) {
 
 /**
  * Run one capture (dry run) and return every logged line and prompt question.
+ * @param {object[]} [messages] Messages the stubbed fetch returns.
  */
-async function runDryCapture() {
+async function runDryCapture(messages = [{ id: "1" }, { id: "2" }]) {
   const dir = tmpDir();
   const logged = [];
   const questions = [];
@@ -52,7 +55,7 @@ async function runDryCapture() {
     }),
     getChannelId: async () => "456",
     getChannelName: async () => "general",
-    fetchAllMessages: async () => [{ id: "1" }, { id: "2" }],
+    fetchAllMessages: async () => messages,
     logger: {
       info: (message) => logged.push(String(message)),
       error: () => {},
@@ -411,6 +414,14 @@ describe("runBrowserSession language", () => {
       "  > Confirme (ENTER) o escriba un nombre personalizado: ",
       '  > ENTER para capturar | "salir" para terminar: ',
     ]);
+  });
+
+  it("uses the singular Spanish dry-run summary for one message by default", async () => {
+    setLanguage(DEFAULT_LANGUAGE);
+    const { output } = await runDryCapture([{ id: "1" }]);
+
+    assert.match(output, /Simulación: se respaldaría 1 mensaje./);
+    assert.doesNotMatch(output, /respaldarían|mensajes/);
   });
 
   for (const [language, shownWord] of [

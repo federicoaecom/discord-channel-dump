@@ -1,20 +1,22 @@
-const { describe, it } = require("node:test");
+const { describe, it, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
 const { startServer, stopServer } = require("../helpers/fixture-server.js");
 const {
   launchBrowser,
   getChannelId,
   getChannelNameFromDom,
 } = require("../../src/browser/session.js");
+const { createTempDirs } = require("../helpers/temp-dirs.js");
+
+const temp = createTempDirs();
+
+// Runs even when a test fails before its browser profile is removed.
+afterEach(() => {
+  temp.cleanup();
+});
 
 async function withBrowser(testFn) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "browser-session-"));
-  const result = await testFn(tmpDir);
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-  return result;
+  return testFn(temp.make("browser-session-"));
 }
 
 async function gotoChannelPath(page) {

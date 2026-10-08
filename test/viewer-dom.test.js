@@ -1,29 +1,35 @@
 /* global window */
 
-const { describe, it } = require("node:test");
+const { describe, it, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 const { chromium } = require("playwright");
 const { generateHtml } = require("../src/viewer/render.js");
+const { createTempDirs } = require("./helpers/temp-dirs.js");
+
+const temp = createTempDirs();
+
+// Runs even when the browser fails to launch after the page was written.
+afterEach(() => {
+  temp.cleanup();
+});
 
 const xssPayload = '<img src=x onerror="window.xss=1"> hello';
 
 async function loadViewerPage(messages) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "viewer-"));
+  const tmpDir = temp.make("viewer-");
   const htmlPath = path.join(tmpDir, "index.html");
   fs.writeFileSync(htmlPath, generateHtml("xss-channel", messages), "utf8");
 
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.goto("file:///" + htmlPath.replace(/\\/g, "/"));
-  return { browser, page, tmpDir };
+  return { browser, page };
 }
 
-async function closeViewer({ browser, tmpDir }) {
+async function closeViewer({ browser }) {
   await browser.close();
-  fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
 describe("viewer DOM-safe highlight", () => {
@@ -45,7 +51,7 @@ describe("viewer DOM-safe highlight", () => {
       },
     ];
 
-    const { browser, page, tmpDir } = await loadViewerPage(messages);
+    const { browser, page } = await loadViewerPage(messages);
     try {
       assert.equal(await page.evaluate(() => window.xss), undefined);
 
@@ -61,7 +67,7 @@ describe("viewer DOM-safe highlight", () => {
       const markText = await page.locator(".matched mark").textContent();
       assert.equal(markText, ".*");
     } finally {
-      await closeViewer({ browser, tmpDir });
+      await closeViewer({ browser });
     }
   });
 
@@ -76,7 +82,7 @@ describe("viewer DOM-safe highlight", () => {
       },
     ];
 
-    const { browser, page, tmpDir } = await loadViewerPage(messages);
+    const { browser, page } = await loadViewerPage(messages);
     try {
       await page.fill("#search", "searchable");
       await page.waitForTimeout(100);
@@ -89,7 +95,7 @@ describe("viewer DOM-safe highlight", () => {
       assert.equal(await page.locator(".msg.matched").count(), 0);
       assert.equal(await page.locator("mark").count(), 0);
     } finally {
-      await closeViewer({ browser, tmpDir });
+      await closeViewer({ browser });
     }
   });
 });
