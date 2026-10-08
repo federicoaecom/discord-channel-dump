@@ -8,7 +8,7 @@
  * Options:
  *   -h, --help        Show this help message
  *   -v, --version     Show version
- *       --lang <code> Interface language: es (default) or en
+ *       --lang <code> Interface language (see --help for the supported values)
  *
  * Examples:
  *   node bin/regen-html.js backups/channel-name
@@ -21,24 +21,12 @@ const fs = require("fs");
 const path = require("path");
 const pkg = require("../package.json");
 const logger = require("../src/ui/logger");
-const { resolveLanguage, setLanguage } = require("../src/i18n");
+const { t } = require("../src/i18n");
+const { applyLanguage, findLangFlag, languageHelpParams } = require("../src/cli/language");
 const { generateHtml } = require("../src/viewer/render");
 
 function printHelp() {
-  logger.info(`
-Usage: node bin/regen-html.js [options] <backup-folder>
-
-Options:
-  -h, --help        Show this help message
-  -v, --version     Show version
-      --lang <code> Interface language: es (default) or en
-                    (overrides the DISCORD_LANG env var)
-
-Examples:
-  node bin/regen-html.js backups/channel-name
-  node bin/regen-html.js --lang en backups/channel-name
-  node bin/regen-html.js --help
-`);
+  logger.info(`\n${t("cli.regen.help", languageHelpParams())}\n`);
 }
 
 function printVersion() {
@@ -49,8 +37,9 @@ function printVersion() {
  * Parse command-line arguments for bin/regen-html.js.
  * @param {string[]} argv - Raw CLI arguments (excluding node and script path).
  * @returns {{ help: boolean, version: boolean, lang?: string, _: string[] } | { error: string }}
- *   Parsed options or an error object. `lang` is the raw `--lang` value; it is
- *   validated by `resolveLanguage` in src/i18n.
+ *   Parsed options or an error object whose message uses the active language.
+ *   `lang` is the raw `--lang` value; it is validated by `resolveLanguage` in
+ *   src/i18n.
  */
 function parseCliArgs(argv) {
   const result = { help: false, version: false, _: [] };
@@ -63,11 +52,11 @@ function parseCliArgs(argv) {
       result.version = true;
     } else if (arg === "--lang") {
       if (i + 1 >= argv.length) {
-        return { error: `Missing value for ${arg}` };
+        return { error: t("cli.args.missingValue", { option: arg }) };
       }
       result.lang = argv[++i];
     } else if (arg.startsWith("-")) {
-      return { error: `Unknown option: ${arg}` };
+      return { error: t("cli.args.unknownOption", { option: arg }) };
     } else {
       result._.push(arg);
     }
@@ -77,18 +66,18 @@ function parseCliArgs(argv) {
 }
 
 async function main(argv) {
-  const args = parseCliArgs(argv);
-  // Resolve the language before anything is printed. The viewer will use it in S5.
-  const lang = resolveLanguage({ flag: args.lang, env: process.env.DISCORD_LANG });
+  // Apply the language before parsing so help and every error, including
+  // argument errors that come before --lang, are printed in it.
+  const lang = applyLanguage({ flag: findLangFlag(argv), env: process.env.DISCORD_LANG });
   if (lang.error) {
-    logger.error(`Error: ${lang.error}`);
+    logger.error(t("cli.error", { message: lang.error }));
     printHelp();
     process.exit(1);
   }
-  setLanguage(lang.language);
 
+  const args = parseCliArgs(argv);
   if (args.error) {
-    logger.error(`Error: ${args.error}`);
+    logger.error(t("cli.error", { message: args.error }));
     printHelp();
     process.exit(1);
   }
@@ -103,7 +92,7 @@ async function main(argv) {
 
   const target = args._[0];
   if (!target) {
-    logger.error("Error: Missing backup-folder argument.");
+    logger.error(t("cli.error", { message: t("cli.regen.missingFolder") }));
     printHelp();
     process.exit(1);
   }
@@ -112,7 +101,7 @@ async function main(argv) {
   const htmlPath = path.resolve(target, "index.html");
 
   if (!fs.existsSync(jsonPath)) {
-    logger.error(`Not found: ${jsonPath}`);
+    logger.error(t("cli.regen.notFound", { path: jsonPath }));
     process.exit(1);
   }
 
@@ -120,19 +109,23 @@ async function main(argv) {
   try {
     messages = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
   } catch (e) {
-    logger.error(`Error: Could not read or parse ${jsonPath}: ${e.message}`);
+    logger.error(
+      t("cli.error", {
+        message: t("cli.regen.parseError", { path: jsonPath, reason: e.message }),
+      })
+    );
     process.exit(1);
   }
 
   const channelName = path.basename(path.resolve(target));
 
   fs.writeFileSync(htmlPath, generateHtml(channelName, messages), "utf8");
-  logger.info(`  Done: ${htmlPath}  (${messages.length} messages)`);
+  logger.info(`  ${t("cli.regen.done", { path: htmlPath, count: messages.length })}`);
 }
 
 if (require.main === module) {
   main(process.argv.slice(2)).catch((err) => {
-    logger.error("Fatal error:", err.message);
+    logger.error(t("cli.fatalError"), err.message);
     process.exit(1);
   });
 }

@@ -185,17 +185,30 @@ describe("language default", () => {
   });
 
   it("ignores DISCORD_LANG so resolveLanguage stays the single resolution point", () => {
-    const result = spawnSync(
-      process.execPath,
-      ["-e", 'console.log(require("./src/config").defaults.language)'],
-      {
+    // A fresh process reads the env var at module load, so this catches any
+    // config path (defaults, loadConfig, or the top-level spread) that consults it.
+    const script = `
+      const config = require("./src/config");
+      console.log(JSON.stringify({
+        defaults: config.defaults.language,
+        loaded: config.loadConfig().language,
+        topLevel: config.language,
+      }));
+    `;
+    for (const value of ["en", "xx"]) {
+      const result = spawnSync(process.execPath, ["-e", script], {
         encoding: "utf8",
         timeout: 10000,
         cwd: path.resolve(__dirname, ".."),
-        env: { ...process.env, DISCORD_LANG: "en" },
-      }
-    );
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.stdout.trim(), "es");
+        env: { ...process.env, DISCORD_LANG: value },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stderr, "", `DISCORD_LANG=${value}`);
+      assert.deepEqual(
+        JSON.parse(result.stdout),
+        { defaults: "es", loaded: "es", topLevel: "es" },
+        `DISCORD_LANG=${value}`
+      );
+    }
   });
 });

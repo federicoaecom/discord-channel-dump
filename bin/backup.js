@@ -11,7 +11,8 @@
 const path = require("path");
 const config = require("../src/config");
 const logger = require("../src/ui/logger");
-const { resolveLanguage, setLanguage } = require("../src/i18n");
+const { t } = require("../src/i18n");
+const { applyLanguage, findLangFlag } = require("../src/cli/language");
 const { createCancelToken } = require("../src/cancel-token");
 const { parseCliArgs, printHelp, printVersion } = require("../src/cli/backup-args");
 const { runBrowserSession } = require("../src/app");
@@ -30,23 +31,23 @@ function applyOverrides(config, args) {
 }
 
 function handleFatalError(error) {
-  logger.error("Fatal error:", error.stack || error.message);
+  logger.error(t("cli.fatalError"), error.stack || error.message);
   process.exit(1);
 }
 
 async function main(argv, runSession = runBrowserSession) {
-  const args = parseCliArgs(argv);
-  // Resolve the language before anything is printed so help and errors can use it.
-  const lang = resolveLanguage({ flag: args.lang, env: process.env.DISCORD_LANG });
+  // Apply the language before parsing so help and every error, including
+  // argument errors that come before --lang, are printed in it.
+  const lang = applyLanguage({ flag: findLangFlag(argv), env: process.env.DISCORD_LANG });
   if (lang.error) {
-    logger.error(`Error: ${lang.error}`);
+    logger.error(t("cli.error", { message: lang.error }));
     printHelp();
     process.exit(1);
   }
-  setLanguage(lang.language);
 
+  const args = parseCliArgs(argv);
   if (args.error) {
-    logger.error(`Error: ${args.error}`);
+    logger.error(t("cli.error", { message: args.error }));
     printHelp();
     process.exit(1);
   }
@@ -71,7 +72,7 @@ async function main(argv, runSession = runBrowserSession) {
       config.validateConfig(cfg);
     } catch (e) {
       if (e instanceof config.ConfigError) {
-        logger.error(`Error: ${e.message}`);
+        logger.error(t("cli.error", { message: e.message }));
         process.exit(1);
       }
       throw e;

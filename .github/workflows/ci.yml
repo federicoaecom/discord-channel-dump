@@ -58,5 +58,6 @@ jobs:
           trap cleanup EXIT
           package_file="$(npm pack --silent)"
           npm install --global --prefix "$install_root" --ignore-scripts --no-audit --no-fund "$PWD/$package_file"
-          "$install_root/bin/discord-channel-dump" --help | grep -F "Usage:"
+          "$install_root/bin/discord-channel-dump" --help | grep -F "Uso:"
+          "$install_root/bin/discord-channel-dump" --lang en --help | grep -F "Usage:"
           test "$("$install_root/bin/discord-channel-dump" --version)" = "$expected_version"

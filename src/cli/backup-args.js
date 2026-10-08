@@ -7,31 +7,14 @@
 const pkg = require("../../package.json");
 
 const logger = require("../ui/logger");
+const { t } = require("../i18n");
+const { languageHelpParams } = require("./language");
 
 /**
- * Print the CLI help message.
+ * Print the CLI help message in the active language.
  */
 function printHelp() {
-  logger.info(`
-Usage: node bin/backup.js [options]
-
-Options:
-  -h, --help            Show this help message
-  -v, --version         Show version
-  -o, --output <dir>    Backup output directory
-  -p, --profile <dir>   Browser profile directory
-      --lang <code>     Interface language: es (default) or en
-                        (overrides the DISCORD_LANG env var)
-      --verbose         Enable debug output
-      --dry-run         Fetch message count without saving files
-
-Examples:
-  node bin/backup.js
-  node bin/backup.js --output ./my-backups
-  node bin/backup.js --profile ./my-profile --output ./my-backups
-  node bin/backup.js --dry-run
-  node bin/backup.js --lang en
-`);
+  logger.info(`\n${t("cli.backup.help", languageHelpParams())}\n`);
 }
 
 /**
@@ -45,8 +28,9 @@ function printVersion() {
  * Parse command-line arguments for bin/backup.js.
  * @param {string[]} argv - Raw CLI arguments (excluding node and script path).
  * @returns {{ help: boolean, version: boolean, verbose: boolean, dryRun: boolean, output?: string, profile?: string, lang?: string } | { error: string }}
- *   Parsed options or an error object. `lang` is the raw `--lang` value; it is
- *   validated by `resolveLanguage` in src/i18n.
+ *   Parsed options or an error object whose message uses the active language.
+ *   `lang` is the raw `--lang` value; it is validated by `resolveLanguage` in
+ *   src/i18n.
  */
 function parseCliArgs(argv) {
   const result = { help: false, version: false, verbose: false, dryRun: false };
@@ -63,23 +47,23 @@ function parseCliArgs(argv) {
       result.dryRun = true;
     } else if (arg === "--output" || arg === "-o") {
       if (i + 1 >= argv.length) {
-        return { error: `Missing value for ${arg}` };
+        return { error: t("cli.args.missingValue", { option: arg }) };
       }
       result.output = argv[++i];
     } else if (arg === "--profile" || arg === "-p") {
       if (i + 1 >= argv.length) {
-        return { error: `Missing value for ${arg}` };
+        return { error: t("cli.args.missingValue", { option: arg }) };
       }
       result.profile = argv[++i];
     } else if (arg === "--lang") {
       if (i + 1 >= argv.length) {
-        return { error: `Missing value for ${arg}` };
+        return { error: t("cli.args.missingValue", { option: arg }) };
       }
       result.lang = argv[++i];
     } else if (arg.startsWith("-")) {
-      return { error: `Unknown option: ${arg}` };
+      return { error: t("cli.args.unknownOption", { option: arg }) };
     } else {
-      return { error: `Unexpected argument: ${arg}` };
+      return { error: t("cli.args.unexpectedArgument", { argument: arg }) };
     }
     i++;
   }

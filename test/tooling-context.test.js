@@ -151,7 +151,15 @@ describe("professional layout tooling and documentation", () => {
     assert.equal(smokeStep.condition, "matrix.node-version == '20.19.0'");
     assert.equal(smokeStep.shell, "bash");
     assert.match(smokeStep.run, /--ignore-scripts --no-audit --no-fund/);
-    assert.match(smokeStep.run, /"\$install_root\/bin\/discord-channel-dump" --help/);
+    // The CLI speaks Spanish by default; English stays reachable through --lang en.
+    assert.match(
+      smokeStep.run,
+      /"\$install_root\/bin\/discord-channel-dump" --help \| grep -F "Uso:"/
+    );
+    assert.match(
+      smokeStep.run,
+      /"\$install_root\/bin\/discord-channel-dump" --lang en --help \| grep -F "Usage:"/
+    );
     assert.match(smokeStep.run, /require\(['"]\.\/package\.json['"]\)\.version/);
     assert.match(smokeStep.run, /(?:^|\n)\s*trap cleanup EXIT\s*(?:\n|$)/);
     assert.ok(cleanup, "package smoke must define cleanup() for its temporary artifacts");
