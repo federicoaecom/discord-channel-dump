@@ -391,4 +391,50 @@ describe("saveChannel", () => {
     );
     assert.deepEqual(messages[0].localAttachments, []);
   });
+
+  it("propagates cancellation by identity even when the message is not English", async () => {
+    const dir = tmpDir();
+    const imagesDir = path.join(dir, "images");
+    const attachmentsDir = path.join(dir, "attachments");
+    const messages = [{ images: ["https://cdn.example.com/photo.png"], attachments: [] }];
+    const cancelError = new Error("Descarga cancelada");
+    cancelError.name = "CancelError";
+
+    try {
+      await assert.rejects(
+        downloadMedia(messages, imagesDir, attachmentsDir, null, async () => {
+          throw cancelError;
+        }),
+        (error) => error === cancelError
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("skips a generic download error even when its message mentions cancellation", async () => {
+    const dir = tmpDir();
+    const imagesDir = path.join(dir, "images");
+    const attachmentsDir = path.join(dir, "attachments");
+    const messages = [{ images: ["https://cdn.example.com/photo.png"], attachments: [] }];
+
+    const chunks = [];
+    const originalWrite = process.stdout.write;
+    process.stdout.write = (chunk) => {
+      chunks.push(chunk);
+      return true;
+    };
+
+    try {
+      await downloadMedia(messages, imagesDir, attachmentsDir, null, async () => {
+        throw new Error("Request cancelled by peer");
+      });
+    } finally {
+      process.stdout.write = originalWrite;
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+
+    assert.match(chunks.join(""), /\[skip img\]/);
+    assert.deepEqual(messages[0].localImages, []);
+  });
 });

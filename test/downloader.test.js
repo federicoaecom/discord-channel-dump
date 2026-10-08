@@ -172,4 +172,27 @@ describe("downloadFile", () => {
     );
     await stopServer(server);
   });
+
+  it("rejects with a cancel error when cancelled during an in-flight download", async () => {
+    const dir = tmpDir();
+    const server = await startServer(0, [{ path: "/hang", handler: () => {} }]);
+    const port = server.address().port;
+    const token = createCancelToken();
+    const dest = path.join(dir, "inflight.txt");
+
+    const pending = downloadFile(`http://localhost:${port}/hang`, dest, {
+      ...baseOpts,
+      cancelToken: token,
+    });
+    setTimeout(() => token.cancel(), 50);
+
+    try {
+      await assert.rejects(pending, (error) => error.name === "CancelError");
+      assert.equal(fs.existsSync(dest), false);
+      assert.equal(fs.existsSync(`${dest}.part`), false);
+    } finally {
+      server.closeAllConnections();
+      await stopServer(server);
+    }
+  });
 });

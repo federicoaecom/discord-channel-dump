@@ -5,6 +5,7 @@ const os = require("os");
 const path = require("path");
 const pkg = require("../package.json");
 const { runBrowserSession } = require("../src/app.js");
+const { PROMPT_CLOSED } = require("../src/ui/prompt.js");
 
 function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "app-"));
@@ -232,5 +233,71 @@ describe("runBrowserSession", () => {
 
     assert.equal(saved.length, 0);
     assert.ok(logged.some((msg) => String(msg).includes("Dry run")));
+  });
+
+  function closingPromptDeps(promptError, onContextClose) {
+    return {
+      launchBrowser: async () => ({
+        context: {
+          close: () => {
+            onContextClose();
+            return Promise.resolve();
+          },
+        },
+        page: { goto: async () => {}, evaluate: async () => null },
+        session: { getToken: () => null },
+      }),
+      createPrompt: () => ({
+        prompt: async () => {
+          throw promptError;
+        },
+        close: () => {},
+      }),
+      saveChannel: async () => {},
+      logger: {
+        info: () => {},
+        error: () => {},
+        warn: () => {},
+        debug: () => {},
+        write: () => {},
+      },
+    };
+  }
+
+  it("ends the session quietly when the prompt closes, regardless of the message", async () => {
+    const dir = tmpDir();
+    const config = { backupDir: dir, profileDir: dir };
+    let closed = false;
+    const promptError = new Error("Entrada cerrada");
+    promptError.code = PROMPT_CLOSED;
+
+    await runBrowserSession(
+      config,
+      null,
+      closingPromptDeps(promptError, () => {
+        closed = true;
+      })
+    );
+
+    assert.equal(closed, true);
+  });
+
+  it("propagates a generic error even when its message reads 'Prompt closed'", async () => {
+    const dir = tmpDir();
+    const config = { backupDir: dir, profileDir: dir };
+    let closed = false;
+    const promptError = new Error("Prompt closed");
+
+    await assert.rejects(
+      runBrowserSession(
+        config,
+        null,
+        closingPromptDeps(promptError, () => {
+          closed = true;
+        })
+      ),
+      (error) => error === promptError
+    );
+    assert.equal(closed, true);
   });
 });

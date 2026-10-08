@@ -6,6 +6,23 @@
 
 const readline = require("readline");
 
+const PROMPT_CLOSED = "PROMPT_CLOSED";
+
+function createPromptClosedError() {
+  const err = new Error("Prompt closed");
+  err.code = PROMPT_CLOSED;
+  return err;
+}
+
+/**
+ * Check whether an error signals that the prompt input was closed.
+ * @param {unknown} err - Value to check.
+ * @returns {boolean} True when the error carries the PROMPT_CLOSED code.
+ */
+function isPromptClosedError(err) {
+  return Boolean(err) && err.code === PROMPT_CLOSED;
+}
+
 /**
  * Create a reusable terminal prompt.
  * @param {NodeJS.ReadableStream} [input] - Input stream (default: process.stdin).
@@ -27,14 +44,14 @@ function createPrompt(input = process.stdin, output = process.stdout) {
     closed = true;
     while (queue.length > 0) {
       const pending = queue.shift();
-      pending.reject(new Error("Prompt closed"));
+      pending.reject(createPromptClosedError());
     }
   });
 
   function prompt(question) {
     return new Promise((resolve, reject) => {
       if (closed) {
-        reject(new Error("Prompt closed"));
+        reject(createPromptClosedError());
         return;
       }
       queue.push({ resolve, reject });
@@ -49,4 +66,4 @@ function createPrompt(input = process.stdin, output = process.stdout) {
   return { prompt, close };
 }
 
-module.exports = { createPrompt };
+module.exports = { createPrompt, isPromptClosedError, PROMPT_CLOSED };
