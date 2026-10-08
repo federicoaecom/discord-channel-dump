@@ -1,6 +1,14 @@
 # Contributing to discord-channel-dump
 
-Thanks for taking the time to contribute. This document covers the basics of getting started and submitting changes.
+Thanks for taking the time to contribute. This is the single source for contributor setup, checks, conventions, and the pull request workflow. For usage, see [README.md](README.md); for a project map aimed at agents, see [AGENTS.md](AGENTS.md).
+
+## Quick path
+
+1. Set up the project (see [Setup](#setup)).
+2. Open an issue and wait for `status:approved` (see [Submitting changes](#submitting-changes)).
+3. Make a focused change on a branch.
+4. Run the checks: `npm run lint`, `npm run format:check`, `npm test`.
+5. Open a pull request with the template.
 
 ## Setup
 
@@ -11,14 +19,6 @@ Thanks for taking the time to contribute. This document covers the basics of get
    npm install
    npx playwright install chromium
    ```
-
-## Project conventions
-
-- **CommonJS**: use `require` / `module.exports` (no ES modules).
-- **Layout**: CLI entry points live in `bin/`; runtime logic lives in `src/`.
-- **Config single source of truth**: keep tunables in `src/config.js`.
-- **Path handling**: use `path.join` / `path.resolve` for filesystem paths; use `path.posix.join` only for URL-style relative paths in HTML.
-- **Runtime directories**: `backups/` and `browser-profile/` are created at runtime and must not be deleted or committed. They are preserved by the project tooling.
 
 ## Running checks
 
@@ -34,11 +34,24 @@ To auto-format code:
 npm run format
 ```
 
+CI (`.github/workflows/ci.yml`) runs the same checks on every supported Node.js line.
+
+## Project conventions
+
+- **CommonJS**: use `require` / `module.exports` (no ES modules).
+- **Layout**: CLI entry points live in `bin/`; runtime logic lives in `src/`.
+- **Config single source of truth**: keep tunables in `src/config.js`.
+- **Path handling**: use `path.join` / `path.resolve` for filesystem paths; use `path.posix.join` only for URL-style relative paths in HTML.
+- **Interactive by default**: the interactive backup flow is the default; CLI arguments are optional overrides.
+- **Runtime directories**: `backups/` and `browser-profile/` are created at runtime and must not be deleted or committed. They are preserved by the project tooling.
+- **Formatting**: text files use LF line endings; Prettier checks formatting.
+- **Specs**: behavior specs live in `openspec/`; see [openspec/README.md](openspec/README.md).
+
 ## Submitting changes
 
 Every pull request starts from an approved issue. The `PR Validation` workflow (`.github/workflows/pr-validation.yml`) blocks pull requests that skip these steps.
 
-### Quick path
+### Steps
 
 1. **Open an issue** with the "Work item" template. New issues get the `status:needs-review` label.
 2. **Wait for approval.** A maintainer adds `status:approved` when the work can start. Do not start before that.
@@ -59,7 +72,7 @@ Every pull request starts from an approved issue. The `PR Validation` workflow (
 - Keep changes focused on one concern per pull request.
 - Avoid adding new runtime dependencies unless there is a design discussion first.
 - Add user-visible changes to the `[Unreleased]` section of `CHANGELOG.md`.
-- Update docs (`README.md`, `README.es.md`, `CHANGELOG.md`, `CONTRIBUTING.md`) when behavior changes.
+- Update docs (`README.md`, `README.es.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `AGENTS.md`) when behavior or structure changes.
 - **New test files**: add each new file to both the `test` and `test:watch` scripts in `package.json`. Both scripts list test files explicitly, so a file that is not listed does not run.
 
 ## Language
