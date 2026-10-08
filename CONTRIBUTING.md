@@ -2,6 +2,8 @@
 
 Thanks for taking the time to contribute. This is the single source for contributor setup, checks, conventions, and the pull request workflow. For usage, see [README.md](README.md); for a project map aimed at agents, see [AGENTS.md](AGENTS.md).
 
+By participating in this project, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Quick path
 
 1. Set up the project (see [Setup](#setup)).
