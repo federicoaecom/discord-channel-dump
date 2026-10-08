@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Remove stale output files, unused assets, local tooling indexes, and superseded SDD artifacts from the workspace while preserving runtime data directories.
+Remove stale output files, unused assets, local tooling indexes, and internal process artifacts from the workspace while preserving runtime data directories.
 
 ## Requirements
 
@@ -28,23 +28,24 @@ The system MUST delete the `logo.png` asset because it is not referenced by the 
 
 ### Requirement: Generated and Local Directories Removed
 
-The system MUST delete generated and local tooling directories: `node_modules/`, `.codegraph/`, and `.atl/`.
+The system MUST delete generated and local tooling directories: `node_modules/` and local tool cache directories.
 
 #### Scenario: Generated directories are present in the workspace
 
-- GIVEN `node_modules/`, `.codegraph/`, and `.atl/` exist in the workspace
+- GIVEN `node_modules/` and local tool cache directories exist in the workspace
 - WHEN the cleanup capability is applied
 - THEN those directories are removed from the workspace
 
-### Requirement: Superseded SDD Changes Removed
+### Requirement: Internal Process Artifacts Removed
 
-The system MUST archive or delete the `openspec/changes/post-hardening-improvements/` directory because it is superseded by the archived `reliable-secure-backups` change.
+The `openspec/` folder MUST contain only the behavior specs (`specs/`), `config.yaml`, and `README.md`. Change-proposal history (`openspec/changes/`) and internal quality reviews (`openspec/reviews/`) MUST NOT be present.
 
-#### Scenario: A superseded SDD change directory exists
+#### Scenario: Internal process artifacts exist in openspec
 
-- GIVEN `openspec/changes/post-hardening-improvements/` exists in the workspace
+- GIVEN `openspec/changes/` or `openspec/reviews/` exists in the workspace
 - WHEN the cleanup capability is applied
-- THEN that directory is no longer present in the workspace
+- THEN neither directory is present
+- AND `openspec/specs/`, `openspec/config.yaml`, and `openspec/README.md` remain
 
 ### Requirement: Runtime Data Directories Preserved
 
@@ -66,4 +67,4 @@ The system MUST verify that the workspace root contains only authored project fi
 - GIVEN cleanup has been applied
 - WHEN a workspace inventory is taken
 - THEN the root contains `bin/`, `src/`, `test/`, `package.json`, `package-lock.json`, `.eslintrc.json`, `.prettierrc`, `.prettierignore`, `.gitignore`, `.github/`, `README.md`, `AGENTS.md`, `LICENSE`, `openspec/`, `backups/`, and `browser-profile/`
-- AND no stale output files, unused assets, generated directories, or superseded SDD changes remain
+- AND no stale output files, unused assets, generated directories, or internal process artifacts remain

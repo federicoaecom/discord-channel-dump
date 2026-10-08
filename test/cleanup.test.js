@@ -24,12 +24,13 @@ describe("cleanup stale artifacts", () => {
     });
   }
 
-  it("superseded SDD change is removed if it existed", () => {
-    assert.equal(
-      exists("openspec", "changes", "post-hardening-improvements"),
-      false,
-      "post-hardening-improvements directory should be removed"
-    );
+  it("keeps only behavior specs and their config in openspec/", () => {
+    for (const required of [["specs"], ["config.yaml"], ["README.md"]]) {
+      assert.ok(exists("openspec", ...required), `openspec/${required.join("/")} must exist`);
+    }
+    for (const stale of ["changes", "reviews"]) {
+      assert.equal(exists("openspec", stale), false, `openspec/${stale}/ should be removed`);
+    }
   });
 
   it("keeps optional runtime data directories ignored", () => {

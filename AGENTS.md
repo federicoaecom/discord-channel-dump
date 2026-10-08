@@ -121,7 +121,7 @@ Match the terminal message against [README: Troubleshooting](README.md#troublesh
 │   ├── i18n/index.test.js  # t(), resolution, and es/en key and placeholder parity
 │   ├── helpers/            # Shared fixtures and subprocess helpers
 │   └── *.test.js           # Cross-cutting tests (e.g. CLI, layout, tooling)
-├── openspec/               # Specs and archived changes (see openspec/README.md)
+├── openspec/               # Behavior specs (see openspec/README.md)
 ├── eslint.config.js        # ESLint flat config
 ├── .prettierrc / .prettierignore
 ├── .gitattributes          # Line-ending rules
@@ -170,4 +170,4 @@ npm test
 
 ## Specs
 
-Behavior specs and the change workflow live in `openspec/`. Start with [openspec/README.md](openspec/README.md).
+Behavior specs live in `openspec/specs/` and are the source of truth for what the code must do. Start with [openspec/README.md](openspec/README.md); changes follow the issue and pull request workflow in [CONTRIBUTING.md](CONTRIBUTING.md).
