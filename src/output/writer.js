@@ -12,6 +12,7 @@ const { mediaFilenameFromUrl } = require("../utils/filenames");
 const { ensureDir } = require("../utils/fs");
 const { generateHtml } = require("../viewer/render");
 const { downloadFile } = require("../downloader");
+const { isCancelError } = require("../cancel-token");
 const { green, yellow, dim } = require("../ui/colors");
 const logger = require("../ui/logger");
 const { renderProgressBar } = require("../ui/progress");
@@ -19,7 +20,7 @@ const { renderProgressBar } = require("../ui/progress");
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
 function handleDownloadError(e) {
-  if (e.name === "CancelError" || /cancelled/i.test(e.message)) {
+  if (isCancelError(e)) {
     throw e;
   }
 }

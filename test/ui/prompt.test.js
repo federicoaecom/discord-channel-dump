@@ -1,7 +1,15 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { Readable, Writable } = require("node:stream");
-const { createPrompt } = require("../../src/ui/prompt.js");
+const { createPrompt, isPromptClosedError, PROMPT_CLOSED } = require("../../src/ui/prompt.js");
+
+function silentOutput() {
+  return new Writable({
+    write(_chunk, _encoding, callback) {
+      callback();
+    },
+  });
+}
 
 describe("createPrompt", () => {
   it("asks a question and returns the trimmed line", async () => {
@@ -75,5 +83,49 @@ describe("createPrompt", () => {
 
     assert.equal(first, "one");
     assert.equal(second, "two");
+  });
+
+  it("rejects pending questions with a prompt-closed error when input ends", async () => {
+    const input = new Readable({
+      read() {
+        this.push(null);
+      },
+    });
+
+    const { prompt, close } = createPrompt(input, silentOutput());
+    try {
+      await assert.rejects(prompt("Waiting: "), (error) => {
+        assert.equal(error.code, "PROMPT_CLOSED");
+        return true;
+      });
+    } finally {
+      close();
+    }
+  });
+
+  it("rejects new questions with a prompt-closed error after close()", async () => {
+    const input = new Readable({ read() {} });
+
+    const { prompt, close } = createPrompt(input, silentOutput());
+    close();
+
+    await assert.rejects(prompt("Late: "), (error) => isPromptClosedError(error));
+  });
+});
+
+describe("isPromptClosedError", () => {
+  it("recognizes prompt-closed errors by code regardless of the message", () => {
+    const error = new Error("Entrada cerrada");
+    error.code = PROMPT_CLOSED;
+    assert.equal(isPromptClosedError(error), true);
+  });
+
+  it("does not match a generic error that only carries the English message", () => {
+    assert.equal(isPromptClosedError(new Error("Prompt closed")), false);
+  });
+
+  it("returns false for missing values", () => {
+    assert.equal(isPromptClosedError(undefined), false);
+    assert.equal(isPromptClosedError(null), false);
   });
 });

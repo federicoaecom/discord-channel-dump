@@ -11,7 +11,7 @@ const fs = require("fs");
 const path = require("path");
 const pkg = require("../package.json");
 const { ensureDir } = require("./utils/fs");
-const { createPrompt } = require("./ui/prompt");
+const { createPrompt, isPromptClosedError } = require("./ui/prompt");
 const { cyan, yellow, dim } = require("./ui/colors");
 const logger = require("./ui/logger");
 const { launchBrowser, getChannelId, getChannelNameFromDom } = require("./browser/session");
@@ -175,7 +175,7 @@ async function runBrowserSession(config, cancelToken, deps = DEFAULT_DEPS) {
       await saveChannel(finalName, messages, config, cancelToken);
     }
   } catch (err) {
-    if (err.message !== "Prompt closed") throw err;
+    if (!isPromptClosedError(err)) throw err;
   } finally {
     close();
     await context.close();

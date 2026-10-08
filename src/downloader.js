@@ -10,6 +10,7 @@ const https = require("https");
 const http = require("http");
 const path = require("path");
 const config = require("./config");
+const { createCancelError } = require("./cancel-token");
 
 function isRetryableStatus(status) {
   return status >= 500 || status === 429;
@@ -93,7 +94,7 @@ function downloadFile(rawUrl, destPath, options = {}) {
 
     if (cancelToken) {
       cancelToken.onCancel(() => {
-        settle(new Error("Download cancelled"));
+        settle(createCancelError("Download cancelled"));
       });
     }
 
