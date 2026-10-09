@@ -124,11 +124,24 @@ describe("professional layout tooling and documentation", () => {
   it("pins the supported Node toolchain and CI matrix", () => {
     const pkg = JSON.parse(read("package.json"));
     assert.equal(pkg.engines.node, "^20.19.0 || ^22.13.0 || >=24");
-    assert.equal(pkg.dependencies.playwright, "1.62.1");
-    assert.equal(pkg.devDependencies.eslint, "10.9.1");
-    assert.equal(pkg.devDependencies["@eslint/js"], "10.0.1");
-    assert.equal(pkg.devDependencies.globals, "17.12.0");
-    assert.equal(pkg.devDependencies.prettier, "3.9.6");
+    // Toolchain versions are pinned exactly (no ranges) and must match the lockfile,
+    // so Dependabot can bump them without editing this test.
+    const lock = JSON.parse(read("package-lock.json"));
+    const pinned = {
+      playwright: pkg.dependencies.playwright,
+      eslint: pkg.devDependencies.eslint,
+      "@eslint/js": pkg.devDependencies["@eslint/js"],
+      globals: pkg.devDependencies.globals,
+      prettier: pkg.devDependencies.prettier,
+    };
+    for (const [name, version] of Object.entries(pinned)) {
+      assert.match(version ?? "", /^\d+\.\d+\.\d+$/, `${name} must be pinned to an exact version`);
+      assert.equal(
+        lock.packages[`node_modules/${name}`]?.version,
+        version,
+        `${name} in package.json must match package-lock.json`
+      );
+    }
 
     const ci = read(".github", "workflows", "ci.yml");
     const steps = parseWorkflowSteps(ci);

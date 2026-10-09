@@ -78,7 +78,7 @@ Match the terminal message against [README: Troubleshooting](README.md#troublesh
 
 - **Runtime**: Node.js 20.19+, 22.13+, or 24+
 - **Language**: JavaScript (CommonJS), npm
-- **Browser automation**: Playwright 1.62.1
+- **Browser automation**: Playwright (exact version pinned in `package.json`)
 - **Tests**: Node.js built-in `node:test`
 - **Quality**: ESLint and Prettier
 - **CI**: GitHub Actions
